@@ -1,3 +1,6 @@
+pub mod image;
+pub use image as Image;
+
 pub mod auth;
 pub use auth as Auth;
 

@@ -1,4 +1,4 @@
-use super::{ImageStruct, AudioStruct, Mention};
+use super::{AudioStruct, Mention};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ pub struct CommentCore {
     pub post_id: String,
 
     pub text: Option<String>,
-    pub images: Vec<ImageStruct>,
+    pub images: Vec<String>,
     pub audio: Option<AudioStruct>,
 
     pub status: CommentStatus,

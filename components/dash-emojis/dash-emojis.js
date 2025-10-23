@@ -166,7 +166,7 @@ class DashEmojis extends HTMLElement {
     let response = await apiCall({
       method: "POST",
       apiUrl: "/api/emoji/add",
-      postData: {
+      reqBody: {
         emojis: selected_images
       }
     })

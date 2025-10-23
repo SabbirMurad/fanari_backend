@@ -3,7 +3,7 @@ use crate::Handler;
 
 pub fn router(cfg: &mut web::ServiceConfig) {
     cfg.service(
-    web::scope("/api/auth")
+        web::scope("/api/auth")
         .route(
             "/refresh",
             web::post().to(Handler::Auth::Refresh::task)

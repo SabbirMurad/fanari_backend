@@ -16,7 +16,7 @@ use crate::utils::validation::{validate_email, validate_full_name, validate_pass
 const CODE_EXPIRE_TIME: i64 = 15;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PostData {
+pub struct ReqBody {
     full_name: String,
     username: String,
     email_address: String,
@@ -28,7 +28,7 @@ pub struct PostData {
 struct Payload { user_id: String }
 
 
-pub async fn task(form_data: web::Json<PostData>) -> Result<HttpResponse, Error> {
+pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> {
     let post_data = sanitize(&form_data);
 
     if let Err(res) = check_empty_fields(&post_data) {
@@ -301,7 +301,7 @@ async fn delete_account(
     Ok(())
 }
 
-fn sanitize(form_data: &PostData) -> PostData {
+fn sanitize(form_data: &ReqBody) -> ReqBody {
     let mut form = form_data.clone();
     form.password = form.password.trim().to_string();
     form.email_address = form.email_address.trim().to_string().to_lowercase();
@@ -312,7 +312,7 @@ fn sanitize(form_data: &PostData) -> PostData {
     form
 }
 
-fn check_empty_fields(form_data: &PostData) -> Result<(), String> {
+fn check_empty_fields(form_data: &ReqBody) -> Result<(), String> {
     if form_data.full_name.len() == 0 {
         Err("Full Name is required".to_string())
     }

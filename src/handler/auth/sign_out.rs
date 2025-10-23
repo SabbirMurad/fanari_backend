@@ -5,7 +5,7 @@ use crate::utils::response::Response;
 use actix_web::{Error, HttpResponse};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct PostData { fcm_token: String }
+struct ReqBody { fcm_token: String }
 
 
 pub async fn task(actix_session: Session) -> Result<HttpResponse, Error> {

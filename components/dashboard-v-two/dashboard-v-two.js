@@ -235,7 +235,7 @@ class DashboardVTwo extends HTMLElement {
     let response = await apiCall({
       apiUrl: '/api/account/short-details',
       method: 'POST',
-      postData: {
+      reqBody: {
         user_id: localStorage.getItem('user_id')
       }
     })

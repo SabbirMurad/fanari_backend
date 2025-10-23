@@ -25,12 +25,25 @@ pub use notification as Notification;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AllowedImageType { Gif, Png, Jpeg, Webp }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ImageUsedAt {
+  ProfilePic,
+  CoverPic,
+  Post,
+  Comment,
+  Chat, 
+  VideoThumbnail
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImageStruct {
   pub uuid: String,
   pub height: usize,
   pub width: usize,
-  pub r#type: AllowedImageType
+  pub blur_hash: String,
+  pub used_at: ImageUsedAt,
+  pub r#type: AllowedImageType,
+  pub temporary: bool
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

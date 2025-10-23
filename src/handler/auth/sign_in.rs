@@ -15,7 +15,7 @@ use actix_web::{ web, Error, HttpResponse};
 const CODE_EXPIRE_TIME: i64 = 15;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PostData {
+pub struct ReqBody {
     email_or_username: String,
     password: String
 }
@@ -34,7 +34,7 @@ struct AuthPayload {
     role: Account::AccountRole,
 }
 
-pub async fn task(form_data: web::Json<PostData>, actix_session: Session) -> Result<HttpResponse, Error> {
+pub async fn task(form_data: web::Json<ReqBody>, actix_session: Session) -> Result<HttpResponse, Error> {
     let email_or_username = form_data.email_or_username.trim().to_string().to_lowercase();
     if email_or_username.len() == 0 {
         return Ok(Response::bad_request("Email/Username is required"));

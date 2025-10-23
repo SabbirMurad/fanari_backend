@@ -13,12 +13,12 @@ use actix_web::{ web, Error, HttpResponse };
 const REQ_EXP_TIME: i64 = 15;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PostData { user_id: String }
+pub struct ReqBody { user_id: String }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Payload { user_id: String, expires_in: i64 }
 
-pub async fn task(form_data: web::Json<PostData>) -> Result<HttpResponse, Error> {
+pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> {
     /* DATABASE ACID SESSION INIT */
     let (db, mut session) = MongoDB.connect_acid().await;
     if let Err(error) = session.start_transaction().await {

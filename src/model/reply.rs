@@ -17,7 +17,7 @@ pub struct ReplyCore {
     pub comment_id: String,
 
     pub text: Option<String>,
-    pub images: Vec<ImageStruct>,
+    pub images: Vec<String>,
     pub audio: Option<AudioStruct>,
 
     pub status: ReplyStatus,

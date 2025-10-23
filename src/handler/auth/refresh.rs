@@ -6,13 +6,13 @@ use crate::{Model::Account::AccountRole, BuiltIns::jwt};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PostData {
+pub struct ReqBody {
     refresh_token: String,
     user_id: String,
     role: AccountRole
 }
 
-pub async fn task(form_data: web::Json<PostData>) -> Result<HttpResponse, Error> {  
+pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> {  
     let refresh_token = form_data.refresh_token.to_string();
     
     let result = jwt::refresh_token::status(&refresh_token);

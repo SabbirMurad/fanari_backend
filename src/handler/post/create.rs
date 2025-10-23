@@ -11,10 +11,10 @@ use actix_web::{web, Error, HttpResponse};
 use crate::Middleware::Auth::RequireAccess;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct PostData {
+pub struct ReqBody {
     page_id: Option<String>,
     caption: Option<String>,
-    images: Vec<Vec<u8>>,
+    images: Vec<String>,
     videos: Vec<VideoStruct>,
     audio: Option<AudioStruct>,
     mentions: Vec<Mention>,
@@ -27,11 +27,11 @@ pub struct PostData {
 
 pub async fn task(
     access: RequireAccess,
-    form_data: web::Json<PostData>
+    form_data: web::Json<ReqBody>
 ) -> Result<HttpResponse, Error> {
     let user_id = access.user_id;
 
-    if let Err(res) = check_empty_fields(form_data.clone()) {
+    if let Err(res) = check_empty_fields(&form_data) {
         return Ok(Response::bad_request(&res));
     }
 
@@ -62,33 +62,6 @@ pub async fn task(
         owner = user_id.clone();
     }
 
-    let mut images: Vec<ImageStruct> = Vec::new();
-
-    for image in form_data.images.clone() {
-        let result = image::add(
-            None,
-            image,
-            image::ImageFrom::Post
-        ).await;
-        
-        if let Err(err) = result {
-            log::error!("{:?}", err);
-            session.abort_transaction().await.ok().unwrap();
-            return Ok(Response::bad_request(&err));
-        }
-      
-        let image_info = result.unwrap();
-      
-        let image_data = ImageStruct {
-            uuid: image_info.uuid,
-            width: image_info.width,
-            height: image_info.height,
-            r#type: image_info.r#type,
-        };
-      
-        images.push(image_data);
-    }
-
     let post_id = Uuid::new_v4().to_string();
     let now = Utc::now().timestamp_millis();
     
@@ -97,7 +70,7 @@ pub async fn task(
         owner: owner.clone(),
         owner_type: owner_type.clone(),
         caption: form_data.caption.clone(),
-        images: images.clone(),
+        images: form_data.images.clone(),
         videos: form_data.videos.clone(),
         audio: form_data.audio.clone(),
         mentions: form_data.mentions.clone(),
@@ -199,7 +172,7 @@ async fn check_page_authority(
     Ok(())
 }
 
-fn check_empty_fields(data: PostData) -> Result<(), String> {
+fn check_empty_fields(data: &ReqBody) -> Result<(), String> {
     if data.images.len() == 0 && data.caption.is_none() && data.videos.len() == 0  && data.audio.is_none() {
         Err("Nothing to post here".to_string())
     }

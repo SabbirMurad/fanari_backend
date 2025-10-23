@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use super::{ImageStruct, VideoStruct, AudioStruct, Mention};
+use super::{ VideoStruct, AudioStruct, Mention};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PostOwnerType { User, Page }
@@ -33,7 +33,7 @@ pub struct PostCore {
     pub owner: String,
 
     pub caption: Option<String>,
-    pub images: Vec<ImageStruct>,
+    pub images: Vec<String>,
     pub videos: Vec<VideoStruct>,
     pub audio: Option<AudioStruct>,
     pub mentions: Vec<Mention>,

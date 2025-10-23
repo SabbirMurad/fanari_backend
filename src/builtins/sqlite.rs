@@ -34,10 +34,6 @@ pub fn create_initial_tables() -> Result<(), Error> {
             type          TEXT NOT NULL,
             data          BLOB NOT NULL,
             height        INTEGER NOT NULL,
-            width         INTEGER NOT NULL,
-            size          INTEGER NOT NULL,
-            created_at    INTEGER NOT NULL,
-            used_at       TEXT NOT NULL
         );", ()
     )?;
 

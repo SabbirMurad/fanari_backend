@@ -1,33 +1,32 @@
-use mongodb::Database;
-use serde_json::json;
 use uuid::Uuid;
 use chrono::Utc;
+use serde_json::json;
+use mongodb::Database;
 use mongodb::bson::doc;
-use crate::builtins;
 use crate::BuiltIns::mongo::MongoDB;
-use crate::Integrations::Firebase;
+// use crate::Integrations::Firebase;
 use serde::{ Serialize, Deserialize };
 use crate::utils::response::Response;
 use actix_web::{web, Error, HttpResponse};
 use crate::middleware::auth::RequireAccess;
-use crate::model::{Comment, AudioStruct, Mention, Reply, ImageStruct};
+use crate::model::{Comment, AudioStruct, Mention, Reply};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct PostData {
+pub struct ReqBody {
     comment_id: String,
     text: Option<String>,
-    images: Vec<Vec<u8>>,
+    images: Vec<String>,
     audio: Option<AudioStruct>,
     mentions: Vec<Mention>,
 }
 
 pub async fn task(
     access: RequireAccess,
-    form_data: web::Json<PostData>
+    form_data: web::Json<ReqBody>
 ) -> Result<HttpResponse, Error> {
     let user_id = access.user_id;
 
-    if let Err(res) = check_empty_fields(form_data.clone()) {
+    if let Err(res) = check_empty_fields(&form_data) {
         return Ok(Response::bad_request(&res));
     }
 
@@ -37,31 +36,6 @@ pub async fn task(
     if let Err(error) = session.start_transaction().await {
         log::error!("{:?}", error);
         return Ok(Response::internal_server_error(&error.to_string()));
-    }
-  
-    let mut images = Vec::new();
-    for image in form_data.images.clone() {
-        let result = builtins::image::add(
-            None,
-            image,
-            builtins::image::ImageFrom::Comment
-        ).await;
-    
-        if let Err(err) = result {
-            log::error!("{:?}", err);
-            session.abort_transaction().await.ok().unwrap();
-            return Ok(Response::bad_request(&err));
-        }
-    
-        let image_info = result.unwrap();
-        let image_data = ImageStruct {
-            uuid: image_info.uuid,
-            width: image_info.width,
-            height: image_info.height,
-            r#type: image_info.r#type,
-        };
-
-        images.push(image_data);
     }
 
     let reply_id = Uuid::new_v4().to_string();
@@ -74,7 +48,7 @@ pub async fn task(
         owner: user_id.clone(),
         comment_id: form_data.comment_id.clone(),
         text: form_data.text.clone(),
-        images: images.clone(),
+        images: form_data.images.clone(),
         audio: form_data.audio.clone(),
         mentions: form_data.mentions.clone(),
         status: Reply::ReplyStatus::Active,
@@ -192,7 +166,7 @@ async fn get_comment_owner(
     Ok(post_owner)
 }
 
-fn check_empty_fields(data: PostData) -> Result<(), String> {
+fn check_empty_fields(data: &ReqBody) -> Result<(), String> {
     if data.images.len() == 0 && data.text.is_none() && data.audio.is_none() {
         Err("Nothing to comment here".to_string())
     }

@@ -13,7 +13,7 @@ pub struct ValidateResetFormData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct PostData { secret_key: String }
+struct ReqBody { secret_key: String }
 
 pub async fn task(form_data: web::Json<ValidateResetFormData>) -> Result<HttpResponse, Error> {
     let user_id = form_data.user_id.trim().to_string();
@@ -108,7 +108,7 @@ pub async fn task(form_data: web::Json<ValidateResetFormData>) -> Result<HttpRes
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
-    let data = PostData {secret_key: reset_request.secret_key};
+    let data = ReqBody {secret_key: reset_request.secret_key};
 
     Ok(HttpResponse::Ok().content_type("application/json").json(data))
 }

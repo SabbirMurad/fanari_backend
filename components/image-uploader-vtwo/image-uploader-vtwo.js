@@ -93,7 +93,7 @@ class ImageUploaderVtwo extends HTMLElement {
         name.pop()
         name = name.join('.')
 
-        let postData = {
+        let reqBody = {
           name: name,
           size: file.size,
           height: img_height,
@@ -103,7 +103,7 @@ class ImageUploaderVtwo extends HTMLElement {
           data_url: url
         }
 
-        this.#imageData.push(postData)
+        this.#imageData.push(reqBody)
       }
 
       this.dispatchEvent(new Event('change'))
