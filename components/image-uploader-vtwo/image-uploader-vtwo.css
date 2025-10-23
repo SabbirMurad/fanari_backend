@@ -1,0 +1,56 @@
+h1,h2,h3,h4,h5,h6,p {
+  margin: 0;
+  padding: 0;
+}
+
+:host {
+  width: 78px;
+  height: 78px;
+  all: initial;
+  display: block;
+  overflow: hidden;
+}
+
+.data-wrapper{
+  gap: 4px;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  border-radius: 12px;
+  align-items: center;
+  flex-direction: column;
+  width: calc(100% - 4px);
+  justify-content: center;
+  height: calc(100% - 4px);
+  background-color: #F8F8F8;
+  border: 2px solid #DCDCDC;
+}
+
+.data-wrapper::before {
+  content: "";
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  position: absolute;
+  background-size: 100%;
+  background-repeat: no-repeat;
+  background-image: url('/components/image-uploader-vtwo/icon/upload.svg');
+}
+
+.upload-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image_input {
+  top: 0;
+  left: 0;
+  opacity: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  position: absolute;
+}

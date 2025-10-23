@@ -1,0 +1,51 @@
+@import "_font.scss";
+@import "_reset.scss";
+@import "_variable.scss";
+
+
+/* Add generic styles here! */
+
+/* CROSS BROWSER SCROLL BAR */
+/* The emerging W3C standard that is currently Firefox-only */
+
+$thumb: var(--generic-black);
+$background: var(--generic-white);
+
+*.no-scrollbar {
+    scrollbar-width: none;
+    &::-webkit-scrollbar { width: 0px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background-color: transparent; border: 1px solid transparent; }
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: $thumb $background;
+	// Works on Chrome/Edge/Safari
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-track { background: $background; }
+    &::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background-color: $thumb;
+        border: 1px solid $background;
+    }
+}
+
+// Works on Chrome/Edge/Safari
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: $background; }
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: $thumb;
+  border: 1px solid $background;
+}
+
+
+/* Generic body style */
+*{-webkit-tap-highlight-color: transparent;}
+
+body {
+  color: var(--generic-black);
+  font-family: var(--generic-font);
+  background-color: var(--generic-white);
+}

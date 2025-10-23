@@ -1,0 +1,62 @@
+/* CUSTOM CSS RESET */
+
+html {
+  height: 100%;
+  line-height: 1.15;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, div, span, h1, h2, h3, h4, h5, h6, p, ul, li, blockquote, a, address, cite, code, em, img, small, form, label, article, aside, canvas, header, nav, main, footer, audio, video {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+}
+
+img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, footer, header, main, nav, section { display: block; }
+  
+ol, ul, li { list-style: none; }
+  
+blockquote, q {
+  quotes: none;
+  &:before, &:after { content: ""; content: none; }
+}
+
+/* ADD CUSTOM STYLES HERE */
+
+a { 
+  cursor: pointer;
+  &:focus{ border: 0; outline: none;  }
+  &:link, &:visited, &:active { text-decoration: none; }
+}
+
+button { cursor: pointer; }
+button, input, label, select, textarea {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  &:focus { border: none; outline: none; }
+}
+
+input::-ms-reveal, input::-ms-clear { display: none; }
+
+input, textarea {
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover, 
+  &:-webkit-autofill:focus, 
+  &:-webkit-autofill:active {
+    caret-color: var(--generic-black);
+    -webkit-text-fill-color: var(--generic-black);
+    -webkit-box-shadow: 0 0 0 40px var(--generic-white) inset !important;
+  }
+}
