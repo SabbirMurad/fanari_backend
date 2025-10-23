@@ -95,7 +95,7 @@ pub async fn task(form_data: web::Json<PostData>) -> Result<HttpResponse, Error>
         return Ok(Response::forbidden("Validation code expired"));
     }
 
-    if request.validation_code != post_data.validation_code {
+    if request.code != post_data.validation_code {
         session.abort_transaction().await.ok().unwrap();
         return Ok(Response::forbidden("Validation code incorrect"));
     }

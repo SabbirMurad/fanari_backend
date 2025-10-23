@@ -131,7 +131,7 @@ pub async fn task(form_data: web::Json<PostData>) -> Result<HttpResponse, Error>
     let request = Account::AccountVerificationRequest {
         uuid: Uuid::now_v7().to_string(),
         user_id: user_id.clone(),
-        validation_code: validation_code.to_string(),
+        code: validation_code.to_string(),
         expires_at: now + CODE_EXPIRE_TIME * 60 * 1000,
     };
     

@@ -52,12 +52,66 @@ pub struct AccountProfile {
     pub modified_at: i64,
 }
 
+//account_social
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AccountSocial {
+    pub uuid: String,
+
+    pub like_count: i64,
+    pub follower_count: i64,
+    pub following_count: i64,
+    pub friend_count: i64,
+    pub blocked_count: i64,
+
+    pub modified_at: i64,
+}
+
+//friends
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Friends {
+    pub requested_by: String,
+    pub accepted_by: String,
+    pub accepted_at: i64,
+}
+
+//blocked
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Blocked {
+    pub blocked: String,
+    pub blocked_by: String,
+    pub blocked_at: i64,
+}
+
+//account_status
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AccountStatus {
+    pub uuid: String,
+
+    pub online: bool,
+    pub last_seen: i64,
+    pub fcm_tokens: Vec<String>,
+}
+
+//account_notification_settings
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AccountNotificationSettings {
+    pub uuid: String,
+
+    pub friend_request_notification: bool,
+    pub following_notification: bool,
+    pub appreciation_notification: bool,
+    pub comment_notification: bool,
+    pub tag_notification: bool,
+
+    pub modified_at: i64,
+}
+
 //account_verification_request
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AccountVerificationRequest {
     pub uuid: String,
     pub user_id: String,
-    pub validation_code: String,
+    pub code: String,
     pub expires_at: i64
 }
 
@@ -79,4 +133,20 @@ pub struct SignInVerificationRequest {
     pub user_id: String,
     pub validation_code: String,
     pub expires_at: i64,
+}
+
+//account_like
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AccountLike {
+    pub user_id: String,
+    pub liked_by: String,
+    pub liked_at: i64,
+}
+
+//account_follow
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AccountFollow {
+    pub user_id: String,
+    pub followed_by: String,
+    pub followed_at: i64,
 }
