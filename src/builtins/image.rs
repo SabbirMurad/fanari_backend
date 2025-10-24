@@ -26,17 +26,6 @@ use crate::Model::AllowedImageType;
 */
 const FACTOR: u32 = 4;
 
-impl std::fmt::Display for AllowedImageType {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            AllowedImageType::Gif => write!(fmt, "gif"),
-            AllowedImageType::Png => write!(fmt, "png"),
-            AllowedImageType::Jpeg => write!(fmt, "jpeg"),
-            AllowedImageType::Webp => write!(fmt, "webp"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageInfo {
     pub uuid: String,

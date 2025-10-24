@@ -2,7 +2,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use futures_util::StreamExt as _;
 use std::collections::HashMap;
-use crate::model::ImageStruct;
+use crate::model::{AllowedImageType, ImageStruct, ImageUsedAt};
 use actix_multipart::Multipart;
 use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
@@ -71,6 +71,7 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
         let blur_hash_key = format!("blur_hash_{}", i);
         let width_key = format!("width_{}", i);
         let height_key = format!("height_{}", i);
+        let used_at_key = format!("used_at_{}", i);
 
         let blur_hash = text_fields
             .get(blur_hash_key.as_str())
@@ -81,7 +82,11 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             .unwrap();
 
         let height = text_fields
-            .get(width_key.as_str())
+            .get(height_key.as_str())
+            .unwrap();
+
+        let used_at = text_fields
+            .get(used_at_key.as_str())
             .unwrap();
 
         // Converting to webp
@@ -92,6 +97,25 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             },
         };
 
+        let image_type = match imghdr::from_bytes(bytes) {
+            Some(image_type) => match image_type {
+                imghdr::Type::Gif => AllowedImageType::Gif,
+                imghdr::Type::Png => AllowedImageType::Png,
+                imghdr::Type::Jpeg => AllowedImageType::Jpeg,
+                imghdr::Type::Webp => AllowedImageType::Webp,
+                _ => {
+                    return Ok(Response::internal_server_error(
+                        "Unsupported image format!"
+                    ));
+                }
+            },
+            None => {
+                return Ok(Response::internal_server_error(
+                    "Invalid image format!"
+                ));
+            },
+        };
+    
         // Creating the metadata in mongo
         let uuid = Uuid::now_v7().to_string();
 
@@ -103,9 +127,9 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             created_at,
             original_size: bytes.len(),
             webp_size: webp_bytes.len(),
-            used_at: None,
+            used_at: ImageUsedAt::from_str(used_at.as_str()),
             temporary: true,
-            original_type: "image".to_string(),
+            original_type: image_type,
         };
 
         let result = collection.insert_one(image_doc.clone()).await;

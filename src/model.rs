@@ -25,6 +25,29 @@ pub use notification as Notification;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AllowedImageType { Gif, Png, Jpeg, Webp }
 
+impl std::fmt::Display for AllowedImageType {
+  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      AllowedImageType::Gif => write!(fmt, "image/gif"),
+      AllowedImageType::Png => write!(fmt, "image/png"),
+      AllowedImageType::Jpeg => write!(fmt, "image/jpeg"),
+      AllowedImageType::Webp => write!(fmt, "image/webp"),
+    }
+  }
+}
+
+impl AllowedImageType {
+  pub fn from_str(s: &str) -> AllowedImageType {
+    match s {
+      "image/gif" => AllowedImageType::Gif,
+      "image/png" => AllowedImageType::Png,
+      "image/jpeg" => AllowedImageType::Jpeg,
+      "image/webp" => AllowedImageType::Webp,
+      _ => AllowedImageType::Jpeg
+    }
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImageUsedAt {
   ProfilePic,
@@ -33,6 +56,26 @@ pub enum ImageUsedAt {
   Comment,
   Chat, 
   VideoThumbnail
+}
+
+impl std::fmt::Display for ImageUsedAt {
+  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(fmt,"{:?}", self)
+  }
+}
+
+impl ImageUsedAt {
+  pub fn from_str(s: &str) -> ImageUsedAt {
+    match s {
+      "ProfilePic" => ImageUsedAt::ProfilePic,
+      "CoverPic" => ImageUsedAt::CoverPic,
+      "Post" => ImageUsedAt::Post,
+      "Comment" => ImageUsedAt::Comment,
+      "Chat" => ImageUsedAt::Chat,
+      "VideoThumbnail" => ImageUsedAt::VideoThumbnail,
+      _ => ImageUsedAt::ProfilePic
+    }
+  }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -44,7 +87,7 @@ pub struct ImageStruct {
   pub webp_size: usize,
   pub blur_hash: String,
   pub used_at: ImageUsedAt,
-  pub original_type: AllowedImageType,
+  pub original_type:  AllowedImageType,
   pub temporary: bool,
   pub created_at: i64
 }
