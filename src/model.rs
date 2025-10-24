@@ -40,10 +40,13 @@ pub struct ImageStruct {
   pub uuid: String,
   pub height: usize,
   pub width: usize,
+  pub original_size: usize,
+  pub webp_size: usize,
   pub blur_hash: String,
   pub used_at: ImageUsedAt,
-  pub r#type: AllowedImageType,
-  pub temporary: bool
+  pub original_type: AllowedImageType,
+  pub temporary: bool,
+  pub created_at: i64
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
