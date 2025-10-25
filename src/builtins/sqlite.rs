@@ -32,8 +32,7 @@ pub fn create_initial_tables() -> Result<(), Error> {
         "CREATE TABLE IF NOT EXISTS image (
             uuid          TEXT PRIMARY KEY,
             type          TEXT NOT NULL,
-            data          BLOB NOT NULL,
-            height        INTEGER NOT NULL,
+            data          BLOB NOT NULL
         );", ()
     )?;
 

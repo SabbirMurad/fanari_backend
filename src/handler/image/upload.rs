@@ -1,62 +1,61 @@
 use uuid::Uuid;
 use chrono::Utc;
 use futures_util::StreamExt as _;
+use webp::Encoder;
 use std::collections::HashMap;
-use crate::model::{AllowedImageType, ImageStruct, ImageUsedAt};
 use actix_multipart::Multipart;
 use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
 use actix_web::{Error, HttpResponse};
 use image::io::Reader as ImageReader;
-// use image::DynamicImage::;
-use webp::Encoder;
+use crate::model::{AllowedImageType, ImageStruct, ImageUsedAt};
 
 
 pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
+    println!("Uploading image...");
+
     let mut images_data = Vec::new();
-    let mut text_fields = HashMap::new();
+    let mut text_fields: HashMap<String, String> = HashMap::new();
 
     // Iterate over multipart fields
     while let Some(item) = payload.next().await {
         let mut field = item?;
 
         // You can check the field name if you have multiple fields
-        let content_disposition = match field.content_disposition() {
-            Some(cd) => cd,
-            None => {
-                return Ok(Response::bad_request("Missing content disposition"))
-            },
+        let (field_name, file_name) = {
+            let cd = match field.content_disposition() {
+                Some(cd) => cd,
+                None => return Ok(Response::bad_request(
+                    "Missing content disposition"
+                )),
+            };
+
+            let field_name = cd.get_name().map(|s| s.to_string());
+            let file_name = cd.get_filename().map(|s| s.to_string());
+            
+            if field_name.is_none() {
+                return Ok(Response::bad_request(
+                    "Missing field name"
+                ));
+            }
+
+            (field_name.unwrap(), file_name)
         };
 
-        let field_name = match content_disposition.get_name() {
-            Some(name) => name,
-            None => {
-                return Ok(Response::bad_request("Missing field name"))
-            },
-        };
+        let mut bytes: Vec<u8> = Vec::new();
+        while let Some(chunk) = field.next().await {
+            let data = chunk?;
+            bytes.extend_from_slice(&data);
+        }
 
-        match content_disposition.get_filename() {
+        match file_name {
             Some(name) => {
-                // Collect the bytes of the image
-                let mut image_bytes: Vec<u8> = Vec::new();
-
-                while let Some(chunk) = field.next().await {
-                    let data = chunk?;
-                    image_bytes.extend_from_slice(&data);
-                }
-
-                images_data.push((name.clone(), name.to_string(), image_bytes));
+                images_data.push((name.clone(), name.to_string(), bytes));
             },
             None => {
-                // It's a text field
-                let mut value = Vec::new();
-                while let Some(chunk) = field.next().await {
-                    value.extend_from_slice(&chunk?);
-                }
-
                 text_fields.insert(
                     field_name.clone(),
-                    String::from_utf8_lossy(&value).to_string()
+                    String::from_utf8_lossy(&bytes).to_string()
                 );
             },
         };
@@ -67,7 +66,7 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
     let collection = db.collection::<ImageStruct>("image");
     let created_at = Utc::now().timestamp_millis();
 
-    for (i, (_field_name, filename, bytes)) in images_data.iter().enumerate() {
+    for (i, (_field_name, _filename, bytes)) in images_data.iter().enumerate() {
         let blur_hash_key = format!("blur_hash_{}", i);
         let width_key = format!("width_{}", i);
         let height_key = format!("height_{}", i);
@@ -108,7 +107,7 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
                         "Unsupported image format!"
                     ));
                 }
-            },
+            }, 
             None => {
                 return Ok(Response::internal_server_error(
                     "Invalid image format!"

@@ -4,6 +4,7 @@ use crate::Handler;
 pub fn router(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/image")
+        .app_data(web::PayloadConfig::new(50 * 8 * 1024 * 1024)) // 50 MB
         .route(
             "/",
             web::post().to(Handler::Image::Upload::task)

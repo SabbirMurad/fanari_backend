@@ -266,8 +266,8 @@ async fn main() -> io::Result<()> {
             })
         })
         .configure(Routes::Auth::router)
-        .configure(Routes::Pages::router)
         .configure(Routes::Image::router)
+        .configure(Routes::Pages::router)
     });
 
     let http_server = if let Some(listener) = listenfd.take_tcp_listener(0)? {
