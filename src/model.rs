@@ -37,6 +37,15 @@ impl std::fmt::Display for AllowedImageType {
 }
 
 impl AllowedImageType {
+  pub fn to_str(&self) -> &str {
+    match self {
+      AllowedImageType::Gif => "image/gif",
+      AllowedImageType::Png => "image/png",
+      AllowedImageType::Jpeg => "image/jpeg",
+      AllowedImageType::Webp => "image/webp",
+    }
+  }
+
   pub fn from_str(s: &str) -> AllowedImageType {
     match s {
       "image/gif" => AllowedImageType::Gif,
@@ -87,7 +96,7 @@ pub struct ImageStruct {
   pub webp_size: usize,
   pub blur_hash: String,
   pub used_at: ImageUsedAt,
-  pub original_type:  AllowedImageType,
+  pub original_type:  String,
   pub temporary: bool,
   pub created_at: i64
 }

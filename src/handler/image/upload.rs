@@ -4,18 +4,17 @@ use futures_util::StreamExt as _;
 use webp::Encoder;
 use std::collections::HashMap;
 use actix_multipart::Multipart;
-use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
 use actix_web::{Error, HttpResponse};
 use image::io::Reader as ImageReader;
+use crate::builtins::{mongo::MongoDB, sqlite};
 use crate::model::{AllowedImageType, ImageStruct, ImageUsedAt};
 
 
 pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
-    println!("Uploading image...");
-
     let mut images_data = Vec::new();
     let mut text_fields: HashMap<String, String> = HashMap::new();
+    let mut image_ids: Vec<String> = Vec::new();
 
     // Iterate over multipart fields
     while let Some(item) = payload.next().await {
@@ -61,10 +60,10 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
         };
     }
 
-    let mut image_ids: Vec<String> = Vec::new();
     let db = MongoDB.connect();
     let collection = db.collection::<ImageStruct>("image");
     let created_at = Utc::now().timestamp_millis();
+    let sqlite_conn = sqlite::connect(sqlite::DBF::IMG).unwrap();
 
     for (i, (_field_name, _filename, bytes)) in images_data.iter().enumerate() {
         let blur_hash_key = format!("blur_hash_{}", i);
@@ -128,13 +127,32 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             webp_size: webp_bytes.len(),
             used_at: ImageUsedAt::from_str(used_at.as_str()),
             temporary: true,
-            original_type: image_type,
+            original_type: image_type.to_str().to_string(),
         };
 
         let result = collection.insert_one(image_doc.clone()).await;
         if let Err(error) = result {
             return Ok(Response::internal_server_error(&error.to_string()));
         }
+
+        // Uploading image to sqlite
+        let result = sqlite_conn.execute("
+            INSERT INTO image (uuid, original, webp)
+            VALUES (?1, ?2, ?3)",
+            (
+                &uuid,
+                &bytes,
+                &webp_bytes
+            )
+        );
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            return Ok(Response::internal_server_error(&error.to_string()));
+        } else {
+            image_ids.push(uuid.clone());
+        }
+  
 
         // Storing the id for the response
         image_ids.push(uuid.clone());

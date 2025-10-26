@@ -164,7 +164,7 @@ async fn main() -> io::Result<()> {
                             .and_then(|v| v.to_str().ok())
                             .unwrap_or("");
 
-                        if path.starts_with("/api") || accept_header.contains("application/json") {
+                        if path.starts_with("/api") || path.starts_with("/image")|| accept_header.contains("application/json") {
                             // Don’t override JSON API 404s
                             return res;
                         }

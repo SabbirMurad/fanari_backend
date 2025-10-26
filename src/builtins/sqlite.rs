@@ -31,8 +31,8 @@ pub fn create_initial_tables() -> Result<(), Error> {
     let _result = db_conn.execute(
         "CREATE TABLE IF NOT EXISTS image (
             uuid          TEXT PRIMARY KEY,
-            type          TEXT NOT NULL,
-            data          BLOB NOT NULL
+            original      BLOB NOT NULL,
+            webp          BLOB NOT NULL
         );", ()
     )?;
 
