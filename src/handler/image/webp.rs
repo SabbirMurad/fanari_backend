@@ -37,6 +37,10 @@ pub async fn task(image_id: web::Path<String>) -> Result<HttpResponse, Error> {
 
     let image_meta = option.unwrap();
 
+    if image_meta.temporary {
+        return Ok(Response::not_found("Image not found!"));
+    }
+
     Ok(
         HttpResponse::Ok()
         .content_type("image/webp")

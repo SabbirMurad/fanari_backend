@@ -57,7 +57,8 @@ pub async fn task(email_or_username: web::Path<String>,) -> Result<HttpResponse,
     let account_profile = option.unwrap();
 
     let data = serde_json::json!({
-        "full_name": account_profile.full_name,
+        "first_name": account_profile.first_name,
+        "last_name": account_profile.last_name,
         "profile_picture": account_profile.profile_picture
     });
 

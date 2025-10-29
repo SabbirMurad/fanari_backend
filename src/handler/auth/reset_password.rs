@@ -1,11 +1,11 @@
 use chrono::Utc;
 use mongodb::bson::doc;
+use crate::Model::Account;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::Utils::response::Response;
 use serde::{ Serialize, Deserialize };
 use actix_web::{ web, Error, HttpResponse };
 use crate::Utils::validation::validate_password;
-use crate::Model::Account;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResetPasswordFormData {

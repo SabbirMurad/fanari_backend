@@ -9,7 +9,7 @@ use serde::{ Serialize, Deserialize };
 use mongodb::{ClientSession, Database};
 use actix_web::{ web, Error, HttpResponse };
 use crate::utils::response::Response;
-use crate::utils::validation::{validate_email, validate_full_name, validate_password, validate_username};
+use crate::utils::validation::{validate_email, validate_password, validate_username};
 
 
 //in minutes
@@ -17,7 +17,8 @@ const CODE_EXPIRE_TIME: i64 = 15;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReqBody {
-    full_name: String,
+    first_name: String,
+    last_name: String,
     username: String,
     email_address: String,
     password: String,
@@ -32,10 +33,6 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
     let post_data = sanitize(&form_data);
 
     if let Err(res) = check_empty_fields(&post_data) {
-        return Ok(Response::bad_request(&res));
-    }
-
-    if let Err(res) = validate_full_name(&post_data.full_name) {
         return Ok(Response::bad_request(&res));
     }
 
@@ -104,7 +101,8 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
 
     let account_profile = Account::AccountProfile {
         uuid: user_id.clone(),
-        full_name: post_data.full_name.clone(),
+        first_name: post_data.first_name.clone(),
+        last_name: post_data.last_name.clone(),
         profile_picture: None,
         biography: None,
         date_of_birth: None,
@@ -305,7 +303,8 @@ fn sanitize(form_data: &ReqBody) -> ReqBody {
     let mut form = form_data.clone();
     form.password = form.password.trim().to_string();
     form.email_address = form.email_address.trim().to_string().to_lowercase();
-    form.full_name = form.full_name.trim().to_string();
+    form.first_name = form.first_name.trim().to_string();
+    form.last_name = form.last_name.trim().to_string();
     form.username = form.username.trim().to_string().to_lowercase();
     form.confirm_password = form.confirm_password.trim().to_string();
     
@@ -313,8 +312,14 @@ fn sanitize(form_data: &ReqBody) -> ReqBody {
 }
 
 fn check_empty_fields(form_data: &ReqBody) -> Result<(), String> {
-    if form_data.full_name.len() == 0 {
-        Err("Full Name is required".to_string())
+    if form_data.first_name.len() == 0 {
+        Err("First Name is required".to_string())
+    }
+    else if form_data.last_name.len() == 0 {
+        Err("Last Name is required".to_string())
+    }
+    else if form_data.username.len() == 0 {
+        Err("Username is required".to_string())
     }
     else if form_data.password.len() == 0 {
         Err("Password is required".to_string())

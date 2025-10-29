@@ -25,7 +25,6 @@ impl std::fmt::Display for PostVisibility {
     }
 }
 
-
 //post_core
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PostCore {

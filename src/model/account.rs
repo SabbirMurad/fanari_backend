@@ -41,7 +41,8 @@ pub struct AccountCore {
 pub struct AccountProfile {
     pub uuid: String,
     
-    pub full_name: String,
+    pub first_name: String,
+    pub last_name: String,
     pub phone_number: Option<String>,
     pub date_of_birth: Option<i64>,
     pub gender: Option<Gender>,
