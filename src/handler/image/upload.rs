@@ -8,7 +8,7 @@ use crate::utils::response::Response;
 use actix_web::{Error, HttpResponse};
 use image::io::Reader as ImageReader;
 use crate::builtins::{mongo::MongoDB, sqlite};
-use crate::model::{AllowedImageType, ImageStruct, ImageUsedAt};
+use crate::model::{AllowedImageType, ImageStruct, AssetUsedAt};
 
 
 pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
@@ -125,8 +125,9 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             created_at,
             original_size: bytes.len(),
             webp_size: webp_bytes.len(),
-            used_at: ImageUsedAt::from_str(used_at.as_str()),
+            used_at: AssetUsedAt::from_str(used_at.as_str()),
             temporary: true,
+            deleted: false,
             original_type: image_type.to_str().to_string(),
         };
 

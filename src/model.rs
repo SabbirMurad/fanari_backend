@@ -58,7 +58,7 @@ impl AllowedImageType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ImageUsedAt {
+pub enum AssetUsedAt {
   ProfilePic,
   CoverPic,
   Post,
@@ -67,22 +67,22 @@ pub enum ImageUsedAt {
   VideoThumbnail
 }
 
-impl std::fmt::Display for ImageUsedAt {
+impl std::fmt::Display for AssetUsedAt {
   fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(fmt,"{:?}", self)
   }
 }
 
-impl ImageUsedAt {
-  pub fn from_str(s: &str) -> ImageUsedAt {
+impl AssetUsedAt {
+  pub fn from_str(s: &str) -> AssetUsedAt {
     match s {
-      "ProfilePic" => ImageUsedAt::ProfilePic,
-      "CoverPic" => ImageUsedAt::CoverPic,
-      "Post" => ImageUsedAt::Post,
-      "Comment" => ImageUsedAt::Comment,
-      "Chat" => ImageUsedAt::Chat,
-      "VideoThumbnail" => ImageUsedAt::VideoThumbnail,
-      _ => ImageUsedAt::ProfilePic
+      "ProfilePic" => AssetUsedAt::ProfilePic,
+      "CoverPic" => AssetUsedAt::CoverPic,
+      "Post" => AssetUsedAt::Post,
+      "Comment" => AssetUsedAt::Comment,
+      "Chat" => AssetUsedAt::Chat,
+      "VideoThumbnail" => AssetUsedAt::VideoThumbnail,
+      _ => AssetUsedAt::ProfilePic
     }
   }
 }
@@ -95,9 +95,10 @@ pub struct ImageStruct {
   pub original_size: usize,
   pub webp_size: usize,
   pub blur_hash: String,
-  pub used_at: ImageUsedAt,
+  pub used_at: AssetUsedAt,
   pub original_type:  String,
   pub temporary: bool,
+  pub deleted: bool,
   pub created_at: i64
 }
 
@@ -106,7 +107,11 @@ pub struct VideoStruct {
   pub uuid: String,
   pub height: usize,
   pub width: usize,
-  pub thumbnail_type: AllowedImageType
+  pub thumbnail_type: AllowedImageType,
+  pub length: i64,
+  pub size: usize,
+  pub used_at: AssetUsedAt,
+  pub created_at: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
