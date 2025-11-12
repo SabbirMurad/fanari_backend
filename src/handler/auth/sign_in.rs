@@ -29,6 +29,7 @@ struct Payload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct AuthPayload {
     access_token: String,
+    access_token_valid_till: i64,
     refresh_token: String,
     user_id: String,
     role: Account::AccountRole,
@@ -104,7 +105,7 @@ pub async fn task(form_data: web::Json<ReqBody>, actix_session: Session) -> Resu
     }
 
     // getting access token
-    let access_token = jwt::access_token::generate_default(
+    let (access_token, valid_time) = jwt::access_token::generate_default(
         &account_core.uuid,
         account_core.role.clone(),
     );
@@ -133,6 +134,7 @@ pub async fn task(form_data: web::Json<ReqBody>, actix_session: Session) -> Resu
 
     let data = AuthPayload {
         access_token,
+        access_token_valid_till: Utc::now().timestamp_millis() + (valid_time * 60 * 1000) as i64,
         refresh_token,
         user_id: account_core.uuid.clone(),
         role: account_core.role.clone(),
@@ -156,7 +158,10 @@ async fn validate_login(
     let collection = db.collection::<Account::AccountCore>("account_core");
 
     let result = collection.find_one(
-        doc!{"email_address": email_or_username},
+        doc!{ "$or": [
+         {"username": email_or_username},
+         {"email_address": email_or_username},
+        ]},
     ).await;
 
     if let Err(error) = result {
@@ -168,64 +173,8 @@ async fn validate_login(
     let option = result.unwrap();
 
     if let None = option {
-        let collection = db.collection::<Account::AccountProfile>("account_profile");
-
-        let result = collection.find_one(
-            doc!{"username": email_or_username},
-        ).await;
-
-        if let Err(error) = result {
-            log::error!("{:?}", error);
-            session.abort_transaction().await.ok().unwrap();
-            return Err(Response::internal_server_error(&error.to_string()));
-        }
-
-        let option = result.unwrap();
-
-        if let None = option {
-            session.abort_transaction().await.ok().unwrap();
-            return Err(Response::not_found("Username or email not found"));
-        }
-
-        let account_profile = option.unwrap();
-
-        let collection = db.collection::<Account::AccountCore>("account_core");
-
-        let result = collection.find_one(
-            doc!{"uuid": account_profile.uuid},
-        ).await;
-    
-        if let Err(error) = result {
-            log::error!("{:?}", error);
-            session.abort_transaction().await.ok().unwrap();
-            return Err(Response::internal_server_error(&error.to_string()));
-        }
-    
-        let option = result.unwrap();
-        let account_core = option.unwrap();
-
-        if account_core.email_verified {
-            if account_core.password != password {
-                session.abort_transaction().await.ok().unwrap();
-                return Err(Response::forbidden("Incorrect password"));
-            }
-            else {
-                return Ok(account_core);
-            }
-        }
-        else {
-            if let Err(error) = super::delete_account(
-                db,
-                session,
-                &account_core.uuid
-            ).await {
-                return Err(error);
-            }
-            else {
-                session.abort_transaction().await.ok().unwrap();
-                return Err(Response::not_found("Username or email not found"));
-            }
-        }
+        session.abort_transaction().await.ok().unwrap();
+        return Err(Response::not_found("Username or email not found"));
     }
 
     let account_core = option.unwrap();

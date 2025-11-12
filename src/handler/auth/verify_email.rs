@@ -9,24 +9,13 @@ use actix_web::{ web, Error, HttpResponse };
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReqBody {
     user_id: String,
-    validation_code: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccountStruct {
-    uuid: String,
-    email_verified: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccountInfoStruct {
-    uuid: String,
-    full_name: String,
+    verification_code: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Payload {
     access_token: String,
+    access_token_valid_till: i64,
     refresh_token: String,
     user_id: String,
     role: Account::AccountRole
@@ -70,7 +59,7 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
         return Ok(Response::forbidden("User already verified"));
     }
 
-    //check if validation code match
+    //check if Verification code match
     let collection = db.collection::
     <Account::AccountVerificationRequest>("account_verification_request");
     let result = collection.find_one(
@@ -86,18 +75,18 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
     let option = result.unwrap();
     if let None = option {
         session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::not_found("Validation request not found"));
+        return Ok(Response::not_found("Verification request not found"));
     }
 
     let request = option.unwrap();
     if request.expires_at < Utc::now().timestamp_millis() {
         session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::forbidden("Validation code expired"));
+        return Ok(Response::forbidden("Verification code expired"));
     }
 
-    if request.code != post_data.validation_code {
+    if request.code != post_data.verification_code {
         session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::forbidden("Validation code incorrect"));
+        return Ok(Response::forbidden("Verification code incorrect"));
     }
 
     //make user verified
@@ -119,7 +108,7 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
         return Ok(Response::not_found("User not found"));
     }
 
-    //delete validation request
+    //delete Verification request
     let collection = db.collection
     ::<Account::AccountVerificationRequest>("account_verification_request");
     let result = collection.delete_many(
@@ -133,7 +122,7 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
     }
 
     // getting access token
-    let access_token = jwt::access_token::generate_default(
+    let (access_token, valid_time) = jwt::access_token::generate_default(
         &account_core.uuid,
         account_core.role.clone(),
     );
@@ -156,6 +145,7 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
 
     let payload = Payload {
         access_token,
+        access_token_valid_till: Utc::now().timestamp_millis() + (valid_time * 60 * 1000) as i64,
         refresh_token,
         user_id: account_core.uuid,
         role: account_core.role
@@ -166,7 +156,7 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
 fn sanitize(form_data: &ReqBody) -> ReqBody {
   let mut form = form_data.clone();
   form.user_id = form.user_id.trim().to_string();
-  form.validation_code = form.validation_code.trim().to_string();
+  form.verification_code = form.verification_code.trim().to_string();
 
   form
 }
@@ -175,8 +165,8 @@ fn check_empty_fields(form_data: &ReqBody) -> Result<(), String> {
   if form_data.user_id.len() == 0 {
     Err("User id required".to_string())
   }
-  else if form_data.validation_code.len() == 0 {
-    Err("Validation code required".to_string())
+  else if form_data.verification_code.len() == 0 {
+    Err("Verification code required".to_string())
   }
   else {
     Ok(())

@@ -4,7 +4,7 @@ use lettre::message::{header, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 
 const CODE_BG_COL: &str = "#9A79F5";
-const PROJECT_NAME: &str = "Your Project Name Here";
+const PROJECT_NAME: &str = "Fanari";
 const CODE_EXPIRE_TIME_IN_MINUTE: &str = "10";
 const SUPPORT_URL: &str = "https://example.com/support";
 

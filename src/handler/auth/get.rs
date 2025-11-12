@@ -59,7 +59,8 @@ pub async fn task(email_or_username: web::Path<String>,) -> Result<HttpResponse,
     let data = serde_json::json!({
         "first_name": account_profile.first_name,
         "last_name": account_profile.last_name,
-        "profile_picture": account_profile.profile_picture
+        "profile_picture": account_profile.profile_picture,
+        "username": account_core.username
     });
 
     Ok(HttpResponse::Ok().content_type("application/json").json(data))

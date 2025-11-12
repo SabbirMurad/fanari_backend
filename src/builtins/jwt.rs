@@ -67,7 +67,7 @@ pub struct TokenDetails {
 pub mod access_token {
   use super::*;
 
-  pub fn generate_default(user_id: &str, role: AccountRole) -> String {
+  pub fn generate_default(user_id: &str, role: AccountRole) -> (String, u64) {
     //sending the auth token and refresh token
     let access_token_details = Claims {
       sub: user_id.to_string(),
@@ -79,7 +79,7 @@ pub mod access_token {
   
     let auth_token = create(access_token_details);
   
-    auth_token
+    (auth_token, 15)
   }
 
   #[allow(dead_code)]
