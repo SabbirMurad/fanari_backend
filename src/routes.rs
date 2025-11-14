@@ -6,3 +6,6 @@ pub use auth as Auth;
 
 pub mod image;
 pub use image as Image;
+
+pub mod post;
+pub use post as Post;

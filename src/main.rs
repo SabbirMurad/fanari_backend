@@ -265,6 +265,7 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
+        .configure(Routes::Post::router)
         .configure(Routes::Auth::router)
         .configure(Routes::Image::router)
         .configure(Routes::Pages::router)

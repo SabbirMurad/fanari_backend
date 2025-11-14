@@ -1,12 +1,11 @@
 use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
-use crate::BuiltIns::image;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
 use mongodb::{bson::doc, ClientSession, Database};
-use crate::model::{Post, ImageStruct, VideoStruct, AudioStruct, Mention};
+use crate::model::{Post, VideoStruct, AudioStruct, Mention};
 use actix_web::{web, Error, HttpResponse};
 use crate::Middleware::Auth::RequireAccess;
 
@@ -87,7 +86,7 @@ pub async fn task(
     
     let collection = db.collection::<Post::PostCore>("post_core");
     let result = collection.insert_one(
-        post_core,
+        &post_core,
     ).await;
 
     if let Err(error) = result {
@@ -107,7 +106,7 @@ pub async fn task(
     };
 
     let result = collection.insert_one(
-        post_stat,
+        &post_stat,
     ).await;
     
     if let Err(error) = result {
@@ -126,7 +125,8 @@ pub async fn task(
         HttpResponse::Ok()
         .content_type("application/json")
         .json(json!({
-            "uuid": &post_id
+            "core": &post_core,
+            "stat": &post_stat,
         }))
     )
 }
