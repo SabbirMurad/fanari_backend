@@ -1,10 +1,13 @@
+use actix::fut::future::result;
+use actix_multipart::form::json;
 use chrono::Utc;
+use futures::StreamExt;
 use serde_json::json;
 use uuid::Uuid;
-use crate::BuiltIns::mongo::MongoDB;
+use crate::{BuiltIns::mongo::MongoDB, model::ImageStruct};
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
-use mongodb::{bson::doc, ClientSession, Database};
+use mongodb::{ClientSession, Database, bson::{Bson, doc}};
 use crate::model::{Post, VideoStruct, AudioStruct, Mention};
 use actix_web::{web, Error, HttpResponse};
 use crate::Middleware::Auth::RequireAccess;
@@ -115,6 +118,35 @@ pub async fn task(
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
+    // Getting The images
+    let filter = doc! {
+        "uuid": {
+            "$in": post_core.images.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
+        }
+    };
+
+    let collection = db.collection::<ImageStruct>("image");
+    let result = collection.find(filter).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    let mut cursor = result.unwrap();
+    let mut images = Vec::new();
+    while let Some(result) = cursor.next().await {
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+
+        let image = result.unwrap();
+        images.push(image);
+    }
+
     /* DATABASE ACID COMMIT */
     if let Err(error) = session.commit_transaction().await {
         log::error!("{:?}", error);
@@ -125,7 +157,15 @@ pub async fn task(
         HttpResponse::Ok()
         .content_type("application/json")
         .json(json!({
-            "core": &post_core,
+            "core": json!({
+                "uuid": &post_core.uuid,
+                "caption": &post_core.caption,
+                "images": &images,
+                "videos": &post_core.videos,
+                "audio": &post_core.audio,
+                "mentions": &post_core.mentions,
+                "created_at": &post_core.created_at,
+            }),
             "stat": &post_stat,
         }))
     )

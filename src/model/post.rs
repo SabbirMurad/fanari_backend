@@ -70,3 +70,11 @@ pub struct PostLike {
     pub liked_by: String,
     pub liked_at: i64,
 }
+
+//post_bookmark
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PostBookmark {
+    pub post_id: String,
+    pub bookmarked_by: String,
+    pub bookmarked_at: i64,
+}
