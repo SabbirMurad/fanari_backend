@@ -1,14 +1,12 @@
-use actix::fut::future::result;
-use actix_multipart::form::json;
 use chrono::Utc;
 use futures::StreamExt;
 use serde_json::json;
 use uuid::Uuid;
-use crate::{BuiltIns::mongo::MongoDB, model::ImageStruct};
+use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
 use mongodb::{ClientSession, Database, bson::{Bson, doc}};
-use crate::model::{Post, VideoStruct, AudioStruct, Mention};
+use crate::model::{AudioStruct, Mention, Post, VideoStruct, ImageStruct, Account};
 use actix_web::{web, Error, HttpResponse};
 use crate::Middleware::Auth::RequireAccess;
 
@@ -24,6 +22,18 @@ pub struct ReqBody {
     content_warning: Option<String>,
     tags: Vec<String>,
     visibility: Post::PostVisibility,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PostOwner {
+    uuid: String,
+    name: String,
+    image: Option<ImageStruct>,
+    owner_type: Post::PostOwnerType,
+    username: String,
+    is_me: bool,
+    following: bool,
+    friend: bool,
 }
 
 
@@ -142,10 +152,70 @@ pub async fn task(
             session.abort_transaction().await.ok().unwrap();
             return Ok(Response::internal_server_error(&error.to_string()));
         }
-
+        
         let image = result.unwrap();
+
+        let result = collection.update_one(
+            doc!{"uuid": &image.uuid},
+            doc!{"$set":{"temporary": false}},
+        ).await;
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+        
         images.push(image);
     }
+
+    // getting account info
+    let collection = db.collection::<Account::AccountCore>("account_core");
+    let result = collection.find_one(doc!{"uuid": &user_id}).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+    
+    let option = result.unwrap();
+
+    if let None = option {
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::not_found("user not found"));
+    }
+
+    let account_core = option.unwrap();
+
+    let collection = db.collection::<Account::AccountProfile>("account_profile");
+    let result = collection.find_one(doc!{"uuid": &user_id}).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+    
+    let option = result.unwrap();
+
+    if let None = option {
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::not_found("user not found"));
+    }
+
+    let account_profile = option.unwrap();
+
+    let post_owner = PostOwner {
+        uuid: user_id.clone(),
+        name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
+        image: account_profile.profile_picture.clone(),
+        owner_type: Post::PostOwnerType::User,
+        username: account_core.username.clone(),
+        is_me: true,
+        following: false,
+        friend: false
+    };
 
     /* DATABASE ACID COMMIT */
     if let Err(error) = session.commit_transaction().await {
@@ -167,6 +237,11 @@ pub async fn task(
                 "created_at": &post_core.created_at,
             }),
             "stat": &post_stat,
+            "meta": json!({
+                "bookmarked": false,
+                "liked": false,
+            }),
+            "owner": serde_json::to_value(&post_owner).unwrap()
         }))
     )
 }
