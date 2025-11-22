@@ -36,6 +36,7 @@ pub struct PostCore {
     pub videos: Vec<VideoStruct>,
     pub audio: Option<AudioStruct>,
     pub mentions: Vec<Mention>,
+    pub poll: Option<String>,
 
     pub owner_type: PostOwnerType,
     pub visibility: PostVisibility,

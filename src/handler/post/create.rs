@@ -5,10 +5,17 @@ use uuid::Uuid;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
-use mongodb::{ClientSession, Database, bson::{Bson, doc}};
-use crate::model::{AudioStruct, Mention, Post, VideoStruct, ImageStruct, Account};
 use actix_web::{web, Error, HttpResponse};
 use crate::Middleware::Auth::RequireAccess;
+use mongodb::{ClientSession, Database, bson::{Bson, doc}};
+use crate::model::{
+    AudioStruct,
+    Mention,
+    Post,
+    VideoStruct,
+    ImageStruct,
+    Account
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ReqBody {
@@ -86,6 +93,7 @@ pub async fn task(
         videos: form_data.videos.clone(),
         audio: form_data.audio.clone(),
         mentions: form_data.mentions.clone(),
+        poll: None,
         tags: form_data.tags.clone(),
         visibility: form_data.visibility.clone(),
         is_nsfw: form_data.is_nsfw.clone(),

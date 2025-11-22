@@ -19,6 +19,9 @@ pub use comment as Comment;
 pub mod reply;
 pub use reply as Reply;
 
+pub mod poll;
+pub use poll as Poll;
+
 pub mod notification;
 pub use notification as Notification;
 
