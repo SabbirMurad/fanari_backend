@@ -14,7 +14,8 @@ use crate::model::{
     Post,
     VideoStruct,
     ImageStruct,
-    Account
+    Account,
+    Poll
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -29,6 +30,15 @@ pub struct ReqBody {
     content_warning: Option<String>,
     tags: Vec<String>,
     visibility: Post::PostVisibility,
+    poll: Option<PollBody>,
+}
+
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PollBody {
+    question: String,
+    options: Vec<String>,
+    r#type: Poll::PollType,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -84,6 +94,28 @@ pub async fn task(
     let post_id = Uuid::new_v4().to_string();
     let now = Utc::now().timestamp_millis();
     
+    let mut poll_id = None;
+    if let Some(poll) = &form_data.poll {
+        let uuid = Uuid::new_v4().to_string();
+        let collection = db.collection::<Poll::Poll>("poll");
+        let result = collection.insert_one(
+            &Poll::Poll {
+                uuid: uuid.clone(),
+                question: poll.question.clone(),
+                options: poll.options.clone(),
+                r#type: poll.r#type.clone(),
+            }
+        ).await;
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+        
+        poll_id = Some(uuid);
+    }
+
     let post_core = Post::PostCore {
         uuid: post_id.clone(),
         owner: owner.clone(),
@@ -93,7 +125,7 @@ pub async fn task(
         videos: form_data.videos.clone(),
         audio: form_data.audio.clone(),
         mentions: form_data.mentions.clone(),
-        poll: None,
+        poll: poll_id,
         tags: form_data.tags.clone(),
         visibility: form_data.visibility.clone(),
         is_nsfw: form_data.is_nsfw.clone(),
@@ -296,7 +328,7 @@ async fn check_page_authority(
 }
 
 fn check_empty_fields(data: &ReqBody) -> Result<(), String> {
-    if data.images.len() == 0 && data.caption.is_none() && data.videos.len() == 0  && data.audio.is_none() {
+    if data.images.len() == 0 && data.caption.is_none() && data.videos.len() == 0  && data.audio.is_none() && data.poll.is_none() {
         Err("Nothing to post here".to_string())
     }
     else {

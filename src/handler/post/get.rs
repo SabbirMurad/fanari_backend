@@ -1,7 +1,7 @@
-use crate::model::{ImageStruct, Post, account, post::PostOwnerType};
+use crate::model::{ImageStruct, Post, Poll, account, post::PostOwnerType};
 use futures::StreamExt;
 use serde_json::Map;
-use mongodb::bson::{Bson, doc};
+use mongodb::{Database, bson::{Bson, doc}};
 use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
@@ -95,31 +95,16 @@ pub async fn task(
         let post_stat = option.unwrap();
 
         // Getting The images
-        let filter = doc! {
-            "uuid": {
-                "$in": post_core.images.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
-            }
+        let images = match get_images(&db, post_core.images.clone()).await {
+            Ok(images) => images,
+            Err(error) => return Ok(error),
         };
 
-        let collection = db.collection::<ImageStruct>("image");
-        let result = collection.find(filter).await;
-        
-        if let Err(error) = result {
-            log::error!("{:?}", error);
-            return Ok(Response::internal_server_error(&error.to_string()));
-        }
-
-        let mut cursor = result.unwrap();
-        let mut images = Vec::new();
-        while let Some(result) = cursor.next().await {
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Ok(Response::internal_server_error(&error.to_string()));
-            }
-
-            let image = result.unwrap();
-            images.push(image);
-        }
+        //Getting poll information
+        let poll = match get_poll(&db, &post_core.poll.clone()).await {
+            Ok(poll) => poll,
+            Err(error) => return Ok(error),
+        };
 
         response.insert(
             "core".to_string(),
@@ -130,6 +115,7 @@ pub async fn task(
                 "mentions": &post_core.mentions,
                 "videos": &post_core.videos,
                 "audio": &post_core.audio,
+                "poll": &poll,
                 "created_at": &post_core.created_at,
             }),
         );
@@ -190,51 +176,9 @@ pub async fn task(
             response.insert("owner".to_string(), owner.clone());
         }
         else {
-            let collection = db.collection::<account::AccountCore>("account_core");
-
-            let result = collection.find_one(
-                doc!{"uuid": &owner_id}
-            ).await;
-
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Ok(Response::internal_server_error(&error.to_string()));
-            }
-
-            let option = result.unwrap();
-            if let None = option {
-                return Ok(Response::not_found("Account core not found"));
-            }
-
-            let account_core = option.unwrap();
-
-            let collection = db.collection::<account::AccountProfile>("account_profile");
-
-            let result = collection.find_one(
-                doc!{"uuid": &owner_id}
-            ).await;
-
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Ok(Response::internal_server_error(&error.to_string()));
-            }
-
-            let option = result.unwrap();
-            if let None = option {
-                return Ok(Response::not_found("Account profile not found"));
-            }
-
-            let account_profile = option.unwrap();
-
-            let post_owner = PostOwner {
-                uuid: owner_id.clone(),
-                name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
-                image: account_profile.profile_picture.clone(),
-                owner_type: PostOwnerType::User,
-                username: account_core.username.clone(),
-                is_me: false,
-                following: false,
-                friend: false
+            let post_owner = match get_post_owner(&db, &owner_id).await {
+                Ok(post_owner) => post_owner,
+                Err(error) => return Ok(error),
             };
 
             owner_map.insert(
@@ -256,4 +200,149 @@ pub async fn task(
         .content_type("application/json")
         .json(posts)
     )
+}
+
+async fn get_poll(db: &Database, poll_id: &Option<String>) -> Result<Option<serde_json::Value>, HttpResponse> {
+    if poll_id.is_none() {
+        return Ok(None);
+    }
+
+    let collection = db.collection::<Poll::Poll>("poll");
+    let result = collection.find_one(
+        doc!{"uuid": poll_id.clone().unwrap()}
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(&error.to_string()));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found("Poll not found"));
+    }
+
+    let poll = option.unwrap();
+    let mut options = Vec::new();
+    let mut total_vote = 0;
+    for option in poll.options.iter() {
+        let collection = db.collection::<Poll::PollVote>("poll_vote");
+        let result = collection.count_documents(
+            doc!{
+                "poll_id": poll.uuid.clone(),
+                "option": option.clone(),
+            }
+        ).await;
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            return Err(Response::internal_server_error(&error.to_string()));
+        }
+
+        let vote = result.unwrap();
+        total_vote += vote;
+
+        options.push(serde_json::json!({
+            "text": option.clone(),
+            "vote": vote
+        }));
+    }
+
+    let value = serde_json::json!({
+        "uuid": &poll.uuid,
+        "question": &poll.question,
+        "type": &poll.r#type,
+        "can_add_option": false,
+        "options": &options,
+        "total_vote": total_vote,
+        "selected_option": []
+    });
+
+    Ok(Some(value))
+}
+
+async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, HttpResponse> {
+    let collection = db.collection::<account::AccountCore>("account_core");
+
+    let result = collection.find_one(
+        doc!{"uuid": &owner_id}
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(&error.to_string()));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found("Account core not found"));
+    }
+
+    let account_core = option.unwrap();
+
+    let collection = db.collection::<account::AccountProfile>("account_profile");
+
+    let result = collection.find_one(
+        doc!{"uuid": &owner_id}
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(&error.to_string()));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found("Account profile not found"));
+    }
+
+    let account_profile = option.unwrap();
+
+    let post_owner = PostOwner {
+        uuid: owner_id.to_string(),
+        name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
+        image: account_profile.profile_picture.clone(),
+        owner_type: PostOwnerType::User,
+        username: account_core.username.clone(),
+        is_me: false,
+        following: false,
+        friend: false
+    };
+
+    Ok(post_owner)
+}
+
+async fn get_images(db: &Database, image_ids: Vec<String>) -> Result<Vec<ImageStruct>, HttpResponse> {
+    let mut images = Vec::new();
+
+    if image_ids.len() == 0 {
+        return Ok(images);
+    }
+
+    let filter = doc! {
+        "uuid": {
+            "$in": image_ids.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
+        }
+    };
+
+    let collection = db.collection::<ImageStruct>("image");
+    let result = collection.find(filter).await;
+        
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(&error.to_string()));
+    }
+
+    let mut cursor = result.unwrap();
+    while let Some(result) = cursor.next().await {
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            return Err(Response::internal_server_error(&error.to_string()));
+        }
+
+        let image = result.unwrap();
+        images.push(image);
+    }
+
+    Ok(images)
 }
