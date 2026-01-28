@@ -13,7 +13,17 @@ pub async fn home(template: web::Data<Tera>) -> Result<HttpResponse, Error> {
 
 pub async fn sign_in(template: web::Data<Tera>) -> Result<HttpResponse, Error> {
   let res_data = template.render(
-    "sign_in.html",
+    "admin/auth.html",
+    &Context::new()
+  )
+  .map_err(|e|error::ErrorInternalServerError(e))?;
+  
+  Ok(HttpResponse::Ok().content_type("text/html").body(res_data))
+}
+
+pub async fn admin_dashboard(template: web::Data<Tera>) -> Result<HttpResponse, Error> {
+  let res_data = template.render(
+    "admin/dashboard.html",
     &Context::new()
   )
   .map_err(|e|error::ErrorInternalServerError(e))?;

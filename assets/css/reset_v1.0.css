@@ -1,0 +1,85 @@
+/* CUSTOM CSS RESET */
+html {
+  height: 100%;
+  line-height: 1.15;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, div, span, h1, h2, h3, h4, h5, h6, p, ul, li, blockquote, a, address, cite, code, em, img, small, form, label, article, aside, canvas, header, nav, main, footer, audio, video {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+}
+
+img {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, footer, header, main, nav, section {
+  display: block;
+}
+
+ol, ul, li {
+  list-style: none;
+}
+
+blockquote, q {
+  quotes: none;
+}
+blockquote:before, blockquote:after, q:before, q:after {
+  content: "";
+  content: none;
+}
+
+/* ADD CUSTOM STYLES HERE */
+a {
+  cursor: pointer;
+}
+a:focus {
+  border: 0;
+  outline: none;
+}
+a:link, a:visited, a:active {
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+button, input, label, select, textarea {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  outline: none;
+}
+button:focus, input:focus, label:focus, select:focus, textarea:focus {
+  border: none;
+  outline: none;
+}
+
+input::-ms-reveal, input::-ms-clear {
+  display: none;
+}
+
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active, textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus, textarea:-webkit-autofill:active {
+  caret-color: var(--generic-black);
+  -webkit-text-fill-color: var(--generic-black);
+  -webkit-box-shadow: 0 0 0 40px var(--generic-white) inset !important;
+}
+
+.primary-container {
+  background-color: var(--primary-container);
+  -webkit-box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+          box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 24px;
+}

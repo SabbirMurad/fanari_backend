@@ -1,9 +1,61 @@
-import { apiCall } from '/resource/js/api-call-v1.0.js';
+import { apiCall } from '/assets/js/api_call_v1.0.js';
 
 class DashboardVTwo extends HTMLElement {
   #dropdownMenuOpen = false;
   #notificationsOpen = false;
-  #adminHeaderItems = ['overview', 'app info', 'emojis', 'packages', 'reports', 'support',]
+  #adminHeaderItems = [
+    {
+      items: [
+        {
+          name: 'Home',
+          component: 'home',
+          icon: 'home.svg'
+        },
+        {
+          name: 'Emoji',
+          component: 'emojis',
+          icon: 'home.svg'
+        }
+      ],
+    },
+    {
+      name: 'Event',
+      items: [
+        {
+          name: 'Tags',
+          component: 'create-event-tag',
+          icon: 'app-info.svg'
+        },
+        {
+          titleName: 'Create Event',
+          name: 'Create',
+          component: 'create-event',
+          icon: 'app-info.svg'
+        },
+        {
+          name: 'List',
+          component: 'event-list',
+          icon: 'app-info.svg'
+        }
+      ],
+    },
+    {
+      name: 'Host',
+      items: [
+        {
+          titleName: 'Create Host',
+          name: 'Create',
+          component: 'create-host',
+          icon: 'app-info.svg'
+        },
+        {
+          name: 'List',
+          component: 'host-list',
+          icon: 'app-info.svg'
+        }
+      ],
+    },
+  ]
 
   #headerItems = []
   #userDetails = {}
@@ -41,7 +93,7 @@ class DashboardVTwo extends HTMLElement {
           `.header-items [data-component-name="${headerItem}"]`
         );
 
-        this.#changeSelectedItem(headerItem, target)
+        this.#changeSelectedItem(target)
       }
 
       if (workspaceItem) {
@@ -97,7 +149,7 @@ class DashboardVTwo extends HTMLElement {
             `.header-items [data-component-name="${headerItem}"]`
           );
 
-          this.#changeSelectedItem(headerItem, target)
+          this.#changeSelectedItem(target)
         }
       }
 
@@ -141,7 +193,10 @@ class DashboardVTwo extends HTMLElement {
       }
     });
 
-    this.#getUserDetails()
+    //TODO: TEMP
+    // this.#getUserDetails()
+    this.#userDetails = { name: 'Fanari', role: 'Administrator' }
+    this.#loadHeaderItems()
   }
 
 
@@ -151,7 +206,7 @@ class DashboardVTwo extends HTMLElement {
   #render() {
     let template = document.createElement('template')
     template.innerHTML = `
-    <link rel="stylesheet" href="/resource/css/reset-v1.0.css">
+    <link rel="stylesheet" href="/assets/css/reset_v1.0.css">
     <!-- <link rel="stylesheet" href="/components/components.css"> -->
     <link rel="stylesheet" href="/components/dashboard-v-two/dashboard-v-two.css">
     <div class="data-wrapper">
@@ -164,10 +219,9 @@ class DashboardVTwo extends HTMLElement {
             <div class="bar bar-3"></div>
           </div>
           <a class="logo" href="/">
-            <img alt="logo" src="/components/dashboard-v-two/icon/logo.svg">
-            <p>Fanari</p>
+            <img alt="logo" src="/components/dashboard-v-two/icon/logo_full.svg">
           </a>
-          <div class="notification-container" style="height:20px;width:20px;">
+          <div class="notification-container primary-container" style="height:20px;width:20px;">
             <img alt="notification-icon" onclick="this.getRootNode().host.toggleNotification(event)" src="/components/dashboard-v-two/icon/bell.svg">
           </div>
           <div class="profile-container">
@@ -179,8 +233,7 @@ class DashboardVTwo extends HTMLElement {
       </div>
       <div class="header-container header-hidden">
         <a href="/" class="header-icon">
-          <img alt="logo" src="/components/dashboard-v-two/icon/logo.svg">
-          <p>Fanari</p>
+          <img alt="logo" src="/components/dashboard-v-two/icon/logo_full.svg">
         </a>
         <div class="header-items">
           <div class="item-skeleton">
@@ -395,21 +448,42 @@ class DashboardVTwo extends HTMLElement {
 
     let container = this.shadow.querySelector(".header-items");
     container.innerHTML = ''
-    for (let item of this.#headerItems) {
-      let component = item.toLowerCase().replace(" ", "-");
+    for (let group of this.#headerItems) {
+      let groupTag = document.createElement("div");
+      groupTag.classList.add("group");
 
-      let div = document.createElement("div");
-      div.classList.add("item");
-      div.setAttribute("data-component-name", component);
-      div.innerHTML = `
-        <img src="/components/dashboard-v-two/icon/${component}.svg" alt="" class="item-logo">
-        <span class="item-text">${item}</span>
+      groupTag.innerHTML = `
+        ${group.name == null
+          ? ""
+          : `
+          <div class="group-title">
+            <span class="group-text">${group.name}</span>
+
+          </div>`
+        }
+        <div class="group-items">
+        </div>
       `;
-      div.addEventListener("click", (event) =>
-        this.#handleHeaderItemClick(component, event.currentTarget)
-      );
 
-      container.appendChild(div);
+      let groupItems = groupTag.querySelector(".group-items");
+      for (let item of group.items) {
+        let div = document.createElement("div");
+        div.classList.add("item");
+        div.setAttribute("data-component-name", item.component);
+        div.setAttribute("data-component-icon", item.icon);
+        div.setAttribute("data-title-name", item.titleName ?? item.name);
+
+        div.innerHTML = `
+          <img src="/components/dashboard-v-two/icon/${item.icon}" alt="" class="item-logo">
+          <span class="item-text">${item.name}</span>
+        `;
+        div.addEventListener("click", (event) =>
+          this.#handleHeaderItemClick(item.component, event.currentTarget)
+        );
+        groupItems.appendChild(div);
+      }
+
+      container.appendChild(groupTag);
     }
 
     //getting url parameter
@@ -436,7 +510,8 @@ class DashboardVTwo extends HTMLElement {
       }
     }
     else {
-      let component = this.#headerItems[0].toLowerCase().replace(" ", "-")
+      let component = this.#headerItems[0].items[0].component;
+
       let target = this.shadow.querySelector(
         `.header-items [data-component-name="${component}"]`
       );
@@ -474,7 +549,7 @@ class DashboardVTwo extends HTMLElement {
     titleText.classList.remove('skeleton')
     titleText.innerText = temp
 
-    this.#changeSelectedItem(header, target);
+    this.#changeSelectedItem(target);
 
     this.#loadComponent(workspace);
 
@@ -497,12 +572,14 @@ class DashboardVTwo extends HTMLElement {
     let stateObj = { id: this.#stateId };
     window.history.pushState(stateObj, "dashboard", `/dashboard?h=${component}&w=${component}`);
 
-    let temp = component.toLowerCase().replace("-", " ");
+    let name = target.getAttribute("data-title-name");
+    console.log(name);
+
     let titleText = this.shadow.querySelector('.title-bar-top .comp-name')
     titleText.classList.remove('skeleton')
-    titleText.innerText = temp
+    titleText.innerText = name
 
-    this.#changeSelectedItem(component, target);
+    this.#changeSelectedItem(target);
 
     this.#loadComponent(component);
 
@@ -518,30 +595,30 @@ class DashboardVTwo extends HTMLElement {
     * 
     * @param {Node} target - expected the html tag thats been clicked on
     */
-  #changeSelectedItem(component, target) {
+  #changeSelectedItem(target) {
     //removing the previously selected
     let preSelected = this.shadow.querySelector(".header-items .item.selected");
 
     if (preSelected) {
-      let preSelectedText = preSelected.querySelector(".item-text").innerText;
       let preSelectedIcon = preSelected.querySelector(".item-logo");
+      let preSelectedIconName = preSelected.getAttribute("data-component-icon");
       preSelected.classList.remove("selected");
 
-      let preComponent = preSelectedText?.toLowerCase().replace(" ", "-");
       preSelectedIcon.setAttribute(
         "src",
-        `/components/dashboard-v-two/icon/${preComponent}.svg`
+        `/components/dashboard-v-two/icon/${preSelectedIconName}`
       );
     }
 
     //adding new selected
     if (target) {
+      let targetIconName = target.getAttribute("data-component-icon");
       let targetIcon = target.querySelector(".item-logo");
 
       target.classList.add("selected");
       targetIcon.setAttribute(
         "src",
-        `/components/dashboard-v-two/icon/${component}-alt.svg`
+        `/components/dashboard-v-two/icon/${targetIconName.split(".")[0]}-alt.svg`
       );
     }
   }

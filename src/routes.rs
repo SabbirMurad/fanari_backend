@@ -1,6 +1,9 @@
 pub mod pages;
 pub use pages as Pages;
 
+pub mod emoji;
+pub use emoji as Emoji;
+
 pub mod auth;
 pub use auth as Auth;
 

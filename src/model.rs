@@ -92,43 +92,43 @@ impl AssetUsedAt {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImageStruct {
-  pub uuid: String,
-  pub height: usize,
-  pub width: usize,
-  pub original_size: usize,
-  pub webp_size: usize,
-  pub blur_hash: String,
-  pub used_at: AssetUsedAt,
-  pub original_type:  String,
-  pub temporary: bool,
-  pub deleted: bool,
-  pub created_at: i64
+    pub uuid: String,
+    pub height: usize,
+    pub width: usize,
+    pub original_size: usize,
+    pub webp_size: usize,
+    pub blur_hash: String,
+    pub used_at: AssetUsedAt,
+    pub original_type:  String,
+    pub temporary: bool,
+    pub deleted: bool,
+    pub created_at: i64
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct VideoStruct {
-  pub uuid: String,
-  pub height: usize,
-  pub width: usize,
-  pub thumbnail_type: AllowedImageType,
-  pub length: i64,
-  pub size: usize,
-  pub used_at: AssetUsedAt,
-  pub created_at: i64,
+    pub uuid: String,
+    pub height: usize,
+    pub width: usize,
+    pub thumbnail_type: AllowedImageType,
+    pub length: i64,
+    pub size: usize,
+    pub used_at: AssetUsedAt,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AudioStruct {
-  pub uuid: String,
-  pub length: i64,
+    pub uuid: String,
+    pub length: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AttachmentStruct {
-  pub uuid: String,
-  pub size: i64,
-  pub name: String,
-  pub extension: String,
+    pub uuid: String,
+    pub size: i64,
+    pub name: String,
+    pub extension: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -136,6 +136,17 @@ pub struct Mention {
     pub user_id: String,
     pub start: usize,
     pub end: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Emoji {
+    pub uuid: String,
+    pub serial: usize,
+    pub name: String,
+    pub created_at: i64,
+    pub created_by: String,
+    pub modified_at: i64,
+    pub modified_by: String
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

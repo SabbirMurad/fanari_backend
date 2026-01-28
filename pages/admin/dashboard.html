@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% include "common.html" %}
+
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <title>Fanari | Dashboard</title>
+</head>
+
+<body>
+    <script>
+        window.addEventListener("load", () => {
+
+            let body = document.querySelector("body");
+            let toast = document.createElement("toast-notification");
+            body.appendChild(toast);
+            window.toast = toast
+
+            console.log(window.toast);
+        })
+    </script>
+    <dashboard-v-two></dashboard-v-two>
+
+    <script src="/assets/js/dashboard.js" type="module"></script>
+</body>
+
+</html>

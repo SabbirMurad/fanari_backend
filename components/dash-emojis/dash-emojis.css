@@ -62,9 +62,7 @@ div, h1, h2, h3, h4, h5, h6, p {
   display: flex;
   align-items: center;
   padding: 12px;
-  background: var(--secondary-color);
-  border-radius: 6px;
-  box-shadow: 0px 0px 12px rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
 }
 
 .data-wrapper .selected-image-wrapper .item::before {
@@ -73,7 +71,7 @@ div, h1, h2, h3, h4, h5, h6, p {
   font-size: 14px;
   font-weight: 600;
   align-self: flex-start;
-  color: var(--tertiary-color);
+  color: var(--text-color);
   margin-right: 12px;
 }
 
@@ -82,7 +80,7 @@ div, h1, h2, h3, h4, h5, h6, p {
   height: 84px;
   object-fit: contain;
   border-radius: 4px;
-  background: #303030;
+  background: var(--border-color);
   margin-right: 12px;
 }
 
@@ -100,9 +98,9 @@ div, h1, h2, h3, h4, h5, h6, p {
   font-size: 14px;
   outline: none;
   border: none;
-  border-bottom: 1px dashed var(--tertiary-color);
+  border-bottom: 1px dashed var(--text-color);
   padding: 6px;
-  color: var(--tertiary-color);
+  color: var(--text-color);
   padding-left: 0px;
   margin-bottom: 6px;
 }
@@ -133,7 +131,7 @@ div, h1, h2, h3, h4, h5, h6, p {
 }
 
 .data-wrapper .available_emoji_title {
-  color: var(--tertiary-color);
+  color: var(--text-color);
   margin-bottom: 32px;
   font-size: 24px;
 }
@@ -156,7 +154,7 @@ div, h1, h2, h3, h4, h5, h6, p {
 .data-wrapper .available_emoji_container .item .image {
   width: 72px;
   height: 72px;
-  background: var(--secondary-color);
+  background: var(--border-color);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -168,7 +166,7 @@ div, h1, h2, h3, h4, h5, h6, p {
 }
 
 .data-wrapper .available_emoji_container .item p {
-  color: var(--tertiary-color);
+  color: var(--text-color);
   font-size: 14px;
 }
 

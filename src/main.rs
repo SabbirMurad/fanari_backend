@@ -266,6 +266,7 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
+        .configure(Routes::Emoji::router)
         .configure(Routes::Reply::router)
         .configure(Routes::Comment::router)
         .configure(Routes::Post::router)

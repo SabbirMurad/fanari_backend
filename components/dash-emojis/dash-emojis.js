@@ -1,4 +1,4 @@
-import { apiCall } from '/resource/js/api-call-v1.0.js';
+import { apiCall } from '/assets/js/api_call_v1.0.js';
 
 class DashEmojis extends HTMLElement {
   #selected_images = [];
@@ -35,7 +35,7 @@ class DashEmojis extends HTMLElement {
   #render() {
     let template = document.createElement('template')
     template.innerHTML = `
-    <link rel="stylesheet" href="/resource/css/reset-v1.0.css">
+    <link rel="stylesheet" href="/assets/css/reset_v1.0.css">
     <link rel="stylesheet" href="/components/dash-emojis/dash-emojis.css">
     <div class="data-wrapper">
       <div class="image-selector">
@@ -63,7 +63,8 @@ class DashEmojis extends HTMLElement {
     })
 
     if (!response.ok) {
-      uniman.toast.setNotification({
+      console.log(window.toast);
+      window.toast.setNotification({
         type: 'error',
         message: response.message
       });
@@ -79,7 +80,7 @@ class DashEmojis extends HTMLElement {
         emojiCard.classList.add('item');
         emojiCard.innerHTML = `
           <div class="image">
-            <img src="/emoji/${emoji.uuid}">
+            <img src="/api/emoji/webp/${emoji.uuid}">
           </div>
           <p>${emoji.name}</p>
         `
@@ -155,7 +156,6 @@ class DashEmojis extends HTMLElement {
         name: name,
         serial: Number(serial_number),
         data: this.#selected_images[i].u8array,
-        type: this.#selected_images[i].type
       })
     }
 
@@ -165,10 +165,8 @@ class DashEmojis extends HTMLElement {
 
     let response = await apiCall({
       method: "POST",
-      apiUrl: "/api/emoji/add",
-      reqBody: {
-        emojis: selected_images
-      }
+      apiUrl: "/api/emoji",
+      reqBody: selected_images
     })
 
     if (!response.ok) {
@@ -210,6 +208,7 @@ class DashEmojis extends HTMLElement {
       let image = this.#selected_images[i];
       let item = document.createElement('div');
       item.classList.add('item')
+      item.classList.add('primary-container');
       item.innerHTML = `
         <img class="image" src="${image.data_url}">
         <div class="info">

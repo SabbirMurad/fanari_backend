@@ -6,7 +6,13 @@ use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
 use actix_web::{ web, Error, HttpResponse, HttpRequest };
 use crate::Middleware::Auth::{require_access, AccessRequirement};
-use crate::model::{ImageStruct, Post, Poll, Account::{self, AccountRole}, post::PostOwnerType};
+use crate::model::{
+    ImageStruct,
+    Post,
+    Poll,
+    Account,
+    post::PostOwnerType
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Query {
@@ -38,7 +44,7 @@ pub async fn task(
 ) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
-        AccessRequirement::Role(AccountRole::Administrator)
+        AccessRequirement::AnyToken
     )?;
 
     let user_id = user.user_id;

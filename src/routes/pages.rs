@@ -9,8 +9,12 @@ pub fn router(cfg: &mut web::ServiceConfig) {
             web::get().to(Markup::home)
         )
         .route(
-            "/admin/sign-in",
+            "/admin/authentication",
             web::get().to(Markup::sign_in)
+        )
+        .route(
+            "/dashboard",
+            web::get().to(Markup::admin_dashboard)
         )
     );
 }

@@ -37,13 +37,12 @@ pub async fn task(image_id: web::Path<String>) -> Result<HttpResponse, Error> {
 
     let image_meta = option.unwrap();
 
-    if image_meta.temporary || image_meta.deleted {
+    if image_meta.temporary  || image_meta.deleted {
         return Ok(Response::not_found("Image not found!"));
     }
-
     Ok(
         HttpResponse::Ok()
-        .content_type(image_meta.original_type)
+        .content_type("image/png")
         .body(image_data)
     )
 }

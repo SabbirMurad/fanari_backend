@@ -1,4 +1,5 @@
 use crate::utils::response::Response;
+use chrono::Utc;
 use serde::{ Serialize, Deserialize };
 use actix_web::{web, Error, HttpResponse };
 use serde_json::json;
@@ -31,15 +32,20 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
 
     match status {
         jwt::Status::Active => {
-            let access_token = jwt::access_token::generate_default(
+            let (access_token, time_in_minutes) = jwt::access_token::generate_default(
                 &form_data.user_id,
                 form_data.role.clone(),    
             );
 
+            let access_token_valid_till = Utc::now().timestamp_millis() + (time_in_minutes * 60 * 1000) as i64;
+
             return Ok(
                 HttpResponse::Ok()
                 .content_type("application/json")
-                .json(json!({"access_token": access_token}))
+                .json(json!({
+                    "access_token": access_token,
+                    "access_token_valid_till": access_token_valid_till
+                }))
             );
         },
         jwt::Status::Blocked => {

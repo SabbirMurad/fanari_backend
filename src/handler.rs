@@ -1,6 +1,9 @@
 pub mod image;
 pub use image as Image;
 
+pub mod emoji;
+pub use emoji as Emoji;
+
 pub mod auth;
 pub use auth as Auth;
 

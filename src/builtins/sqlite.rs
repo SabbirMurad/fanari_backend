@@ -36,6 +36,14 @@ pub fn create_initial_tables() -> Result<(), Error> {
         );", ()
     )?;
 
+    let _result = db_conn.execute(
+        "CREATE TABLE IF NOT EXISTS emoji (
+            uuid          TEXT PRIMARY KEY,
+            original      BLOB NOT NULL,
+            webp          BLOB NOT NULL
+        );", ()
+    )?;
+
 
     /* Following table is for JWT Refresh Token */
     let db_path = env::var("SQLITE_JWT_PATH")
