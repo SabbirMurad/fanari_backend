@@ -7,9 +7,9 @@ use crate::BuiltIns::mongo::MongoDB;
 // use crate::Integrations::Firebase;
 use serde::{ Serialize, Deserialize };
 use crate::utils::response::Response;
-use actix_web::{web, Error, HttpResponse};
-use crate::middleware::auth::RequireAccess;
-use crate::model::{Comment, AudioStruct, Mention, Reply};
+use actix_web::{web, Error, HttpResponse, HttpRequest};
+use crate::middleware::auth::{require_access, AccessRequirement};
+use crate::model::{Comment, AudioStruct, Mention, Reply, Account::AccountRole};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ReqBody {
@@ -21,10 +21,15 @@ pub struct ReqBody {
 }
 
 pub async fn task(
-    access: RequireAccess,
+    req: HttpRequest,
     form_data: web::Json<ReqBody>
 ) -> Result<HttpResponse, Error> {
-    let user_id = access.user_id;
+    let user = require_access(
+        &req,
+        AccessRequirement::Role(AccountRole::Administrator)
+    )?;
+
+    let user_id = user.user_id;
 
     if let Err(res) = check_empty_fields(&form_data) {
         return Ok(Response::bad_request(&res));

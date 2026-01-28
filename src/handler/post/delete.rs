@@ -1,17 +1,22 @@
 use chrono::Utc;
 use mongodb::bson::doc;
-use crate::model::Post;
+use crate::model::{Post, Account::AccountRole};
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
-use actix_web::{web, Error, HttpResponse};
-use crate::Middleware::Auth::RequireAccess;
+use actix_web::{web, Error, HttpResponse, HttpRequest};
+use crate::Middleware::Auth::{require_access, AccessRequirement};
 
 
 pub async fn task(
-    access: RequireAccess,
+    req: HttpRequest,
     post_id: web::Path<String>
 ) -> Result<HttpResponse, Error> {
-    let user_id = access.user_id;
+    let user = require_access(
+        &req,
+        AccessRequirement::Role(AccountRole::Administrator)
+    )?;
+
+    let user_id = user.user_id;
 
     let post_id = post_id.into_inner();
     if post_id.len() == 0 {

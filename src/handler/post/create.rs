@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
-use actix_web::{web, Error, HttpResponse};
-use crate::Middleware::Auth::RequireAccess;
+use actix_web::{web, Error, HttpResponse, HttpRequest};
+use crate::Middleware::Auth::{require_access, AccessRequirement};
 use mongodb::{ClientSession, Database, bson::{Bson, doc}};
 use crate::model::{
     AudioStruct,
@@ -14,7 +14,7 @@ use crate::model::{
     Post,
     VideoStruct,
     ImageStruct,
-    Account,
+    Account::{self, AccountRole},
     Poll
 };
 
@@ -55,10 +55,15 @@ pub struct PostOwner {
 
 
 pub async fn task(
-    access: RequireAccess,
+    req: HttpRequest,
     form_data: web::Json<ReqBody>
 ) -> Result<HttpResponse, Error> {
-    let user_id = access.user_id;
+    let user = require_access(
+        &req,
+        AccessRequirement::Role(AccountRole::Administrator)
+    )?;
+
+    let user_id = user.user_id;
 
     if let Err(res) = check_empty_fields(&form_data) {
         return Ok(Response::bad_request(&res));

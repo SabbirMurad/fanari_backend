@@ -1,12 +1,12 @@
 use crate::utils::string;
-use crate::model::Comment;
 use serde_json::{ Map, Value};
 use mongodb::{bson::doc, Database};
 use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
-use actix_web::{ web, Error, HttpResponse};
-use crate::Middleware::Auth::RequireAccess;
+use crate::model::{Comment, Account::AccountRole};
+use actix_web::{ web, Error, HttpResponse, HttpRequest};
+use crate::middleware::auth::{require_access, AccessRequirement};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Query {
@@ -21,10 +21,15 @@ pub struct Query {
 }
 
 pub async fn task(
-    access: RequireAccess,
+    req: HttpRequest,
     query: web::Query<Query>
 ) -> Result<HttpResponse, Error> {
-    let user_id = access.user_id;
+    let user = require_access(
+        &req,
+        AccessRequirement::Role(AccountRole::Administrator)
+    )?;
+
+    let user_id = user.user_id;
 
     let mut response = Map::new();
 

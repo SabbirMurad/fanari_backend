@@ -1,12 +1,12 @@
-use crate::model::{ImageStruct, Post, Poll, account, post::PostOwnerType};
 use futures::StreamExt;
 use serde_json::Map;
 use mongodb::{Database, bson::{Bson, doc}};
 use crate::builtins::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
-use actix_web::{ web, Error, HttpResponse};
-use crate::Middleware::Auth::RequireAccess;
+use actix_web::{ web, Error, HttpResponse, HttpRequest };
+use crate::Middleware::Auth::{require_access, AccessRequirement};
+use crate::model::{ImageStruct, Post, Poll, Account::{self, AccountRole}, post::PostOwnerType};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Query {
@@ -33,10 +33,15 @@ pub struct PostOwner {
 }
 
 pub async fn task(
-    access: RequireAccess,
+    req: HttpRequest,
     query: web::Query<Query>
 ) -> Result<HttpResponse, Error> {
-    let user_id = access.user_id;
+    let user = require_access(
+        &req,
+        AccessRequirement::Role(AccountRole::Administrator)
+    )?;
+
+    let user_id = user.user_id;
 
     let db = MongoDB.connect();
 
@@ -262,7 +267,7 @@ async fn get_poll(db: &Database, poll_id: &Option<String>) -> Result<Option<serd
 }
 
 async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, HttpResponse> {
-    let collection = db.collection::<account::AccountCore>("account_core");
+    let collection = db.collection::<Account::AccountCore>("account_core");
 
     let result = collection.find_one(
         doc!{"uuid": &owner_id}
@@ -280,7 +285,7 @@ async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, Http
 
     let account_core = option.unwrap();
 
-    let collection = db.collection::<account::AccountProfile>("account_profile");
+    let collection = db.collection::<Account::AccountProfile>("account_profile");
 
     let result = collection.find_one(
         doc!{"uuid": &owner_id}

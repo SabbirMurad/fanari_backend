@@ -1,4 +1,4 @@
-use std::{ fs, env, io };
+use std::{ env, io };
 use listenfd::ListenFd;
 use tera::{ Tera, Context };
 use dotenv::dotenv as App_env;
@@ -266,6 +266,8 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
+        .configure(Routes::Reply::router)
+        .configure(Routes::Comment::router)
         .configure(Routes::Post::router)
         .configure(Routes::Auth::router)
         .configure(Routes::Image::router)

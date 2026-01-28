@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use super::{ImageStruct, AudioStruct, Mention};
+use super::{AudioStruct, Mention};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReplyStatus { Active, Deleted, Suspended }
