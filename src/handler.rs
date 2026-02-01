@@ -15,3 +15,6 @@ pub use comment as Comment;
 
 pub mod reply;
 pub use reply as Reply;
+
+pub mod conversation;
+pub use conversation as Conversation;
