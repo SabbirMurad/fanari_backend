@@ -15,3 +15,6 @@ pub use comment as Comment;
 
 pub mod reply;
 pub use reply as Reply;
+
+pub mod web_socket;
+pub use web_socket as WebSocket;

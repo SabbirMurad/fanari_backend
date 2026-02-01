@@ -1,8 +1,10 @@
 use std::{ env, io };
+use actix::Actor;
 use listenfd::ListenFd;
 use tera::{ Tera, Context };
 use dotenv::dotenv as App_env;
 use actix_files as StaticResource;
+use Handler::WebSocket::Lobby::Lobby;
 use futures_util::future::{self, Either, FutureExt};
 use actix_session::{ SessionMiddleware, storage::RedisActorSessionStore };
 use actix_session::config::{ PersistentSession, TtlExtensionPolicy, CookieContentSecurity };
@@ -35,6 +37,9 @@ use markup as Markup;
 // Hi how are you
 #[actix_web::main]
 async fn main() -> io::Result<()> {
+    // Creates a new websocket lobby
+    let lobby = Lobby::default().start();
+
     /*
     Loads environment variables from `.env` file to `std::env` 
     */ 
@@ -101,6 +106,7 @@ async fn main() -> io::Result<()> {
         */
 
         App::new()
+        .app_data(web::Data::new(lobby.clone()))
         .wrap_fn(|sreq, srv| {
             let app_http = env::var("APP_HTTP")
             .expect("APP_HTTP must be set on .env file");
@@ -266,6 +272,7 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
+        .configure(Routes::web_socket::router)
         .configure(Routes::Emoji::router)
         .configure(Routes::Reply::router)
         .configure(Routes::Comment::router)

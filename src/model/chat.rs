@@ -84,6 +84,5 @@ pub struct MessageVideo {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MessageAttachment {
     pub uuid: String,
-    pub video: VideoStruct,
     pub attachment: AttachmentStruct,
 }
