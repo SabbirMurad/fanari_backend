@@ -4,8 +4,8 @@ pub mod account;
 pub use account as Account;
 
 
-pub mod chat;
-pub use chat as Chat;
+pub mod conversation;
+pub use conversation as Conversation;
 
 pub mod post;
 pub use post as Post;

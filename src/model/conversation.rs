@@ -1,6 +1,31 @@
 use serde::{Deserialize, Serialize};
 use super::{ImageStruct, VideoStruct, AudioStruct, AttachmentStruct, Mention};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConversationType { Single, Group, }
+impl std::fmt::Display for ConversationType {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt,"{:?}", self)
+    }
+}
+
+//conversation_favorite
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConversationFavorite {
+    pub conversation_id: String,
+    pub user_id: String,
+    pub created_at: i64,
+}
+
+//conversation_core
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConversationCore {
+    pub uuid: String,
+    pub r#type: ConversationType,
+    pub last_message_at: i64,
+    pub created_at: i64,
+}
+
 //group_conversation
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GroupConversation {
@@ -8,10 +33,8 @@ pub struct GroupConversation {
     pub owner: String,
     pub admins: Vec<String>,
     pub members: Vec<String>,
-    pub profile_picture: Option<ImageStruct>,
+    pub profile_picture: String,
     pub name: String,
-    pub last_message_at: i64,
-    pub created_at: i64,
 }
 
 //single_conversation
@@ -20,8 +43,6 @@ pub struct SingleConversation {
     pub uuid: String,
     pub user_1: String,
     pub user_2: String,
-    pub last_message_at: i64,
-    pub created_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

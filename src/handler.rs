@@ -18,3 +18,6 @@ pub use reply as Reply;
 
 pub mod web_socket;
 pub use web_socket as WebSocket;
+
+pub mod conversation;
+pub use conversation as Conversation;
