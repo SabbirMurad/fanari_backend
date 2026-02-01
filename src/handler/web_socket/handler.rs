@@ -22,7 +22,7 @@ use actix::{
 };
 
 use crate::Model::{
-  Chat,
+  Conversation,
   ImageStruct,
   AudioStruct,
   VideoStruct,
@@ -41,7 +41,7 @@ pub struct SocketIncomingTextModel {
   audio: Option<AudioStruct>,
   video: Option<VideoStruct>,
   attachment: Option<AttachmentStruct>,
-  r#type: Chat::TextType,
+  r#type: Conversation::TextType,
   reply_to: Option<String>,
   mentions: Option<Vec<Mention>>,
 }
@@ -57,7 +57,7 @@ pub struct SocketOutgoingTextModel {
   audio: Option<AudioStruct>,
   video: Option<VideoStruct>,
   attachment: Option<AttachmentStruct>,
-  r#type: Chat::TextType,
+  r#type: Conversation::TextType,
   reply_to: Option<String>,
   seen_by: Vec<String>,
   created_at: i64,
@@ -243,7 +243,7 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
         return;
     }
   
-    let message_core = Chat::MessageCore {
+    let message_core = Conversation::MessageCore {
         uuid: message.uuid.clone(),  
         conversation_id: message.conversation_id.clone(),
         owner: message.owner.clone(),
@@ -253,7 +253,7 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
         r#type: message.r#type.clone(),
     };
         
-    let collection = db.collection::<Chat::MessageCore>("message_core");
+    let collection = db.collection::<Conversation::MessageCore>("message_core");
     let result = collection.insert_one(
         &message_core,
     ).await;
@@ -265,14 +265,14 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
     }
 
     match message_core.r#type {
-        Chat::TextType::Text => {
-            let message_text = Chat::MessageText {
+        Conversation::TextType::Text => {
+            let message_text = Conversation::MessageText {
                 uuid: message.uuid.clone(),
                 text: message.text.unwrap().clone(),
                 mentions: message.mentions.unwrap().clone(),
             };
 
-            let collection = db.collection::<Chat::MessageText>("message_text");
+            let collection = db.collection::<Conversation::MessageText>("message_text");
 
             let result = collection.insert_one(
                 &message_text,
@@ -284,13 +284,13 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
                 return;
             }
         },
-        Chat::TextType::Image => {
-            let message_image = Chat::MessageImage {
+        Conversation::TextType::Image => {
+            let message_image = Conversation::MessageImage {
                 uuid: message.uuid.clone(),
                 images: message.images.unwrap().clone(),
             };
                     
-            let collection = db.collection::<Chat::MessageImage>("message_image");
+            let collection = db.collection::<Conversation::MessageImage>("message_image");
                     
             let result = collection.insert_one(
                 &message_image,
@@ -302,13 +302,13 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
                 return;
             }
         },
-        Chat::TextType::Audio => {
-            let message_audio = Chat::MessageAudio {
+        Conversation::TextType::Audio => {
+            let message_audio = Conversation::MessageAudio {
                 uuid: message.uuid.clone(),
                 audio: message.audio.unwrap().clone(),
             };
 
-            let collection = db.collection::<Chat::MessageAudio>("message_audio");
+            let collection = db.collection::<Conversation::MessageAudio>("message_audio");
 
             let result = collection.insert_one(
                 &message_audio,
@@ -320,13 +320,13 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
                 return;
             }
         },
-        Chat::TextType::Video => {
-            let message_video = Chat::MessageVideo {
+        Conversation::TextType::Video => {
+            let message_video = Conversation::MessageVideo {
                 uuid: message.uuid.clone(),
                 video: message.video.unwrap().clone(),
             };
 
-            let collection = db.collection::<Chat::MessageVideo>("message_video");
+            let collection = db.collection::<Conversation::MessageVideo>("message_video");
 
             let result = collection.insert_one(
                 &message_video,
@@ -338,13 +338,13 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
                 return;
             }
         },
-        Chat::TextType::Attachment => {
-            let message_attachment = Chat::MessageAttachment {
+        Conversation::TextType::Attachment => {
+            let message_attachment = Conversation::MessageAttachment {
                 uuid: message.uuid.clone(),
                 attachment: message.attachment.clone().unwrap(),
             };
 
-            let collection = db.collection::<Chat::MessageAttachment>("message_attachment");
+            let collection = db.collection::<Conversation::MessageAttachment>("message_attachment");
 
             let result = collection.insert_one(
                 &message_attachment,
@@ -356,13 +356,13 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
                 return;
             }
         },
-        Chat::TextType::Emoji => {
-            let message_emoji = Chat::MessageEmoji {
+        Conversation::TextType::Emoji => {
+            let message_emoji = Conversation::MessageEmoji {
                 uuid: message.uuid.clone(),
                 emoji: message.text.unwrap().clone(),
             };
 
-            let collection = db.collection::<Chat::MessageEmoji>("message_emoji");
+            let collection = db.collection::<Conversation::MessageEmoji>("message_emoji");
 
             let result = collection.insert_one(
                 &message_emoji,
