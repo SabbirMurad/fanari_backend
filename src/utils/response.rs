@@ -7,6 +7,12 @@ pub struct Response {
 }
 
 impl Response {
+  pub fn conflict(message: &str) -> HttpResponse {
+    HttpResponse::Conflict().content_type("application/json").json(
+      Response { message: message.to_string() }
+    )
+  }
+
   pub fn bad_request(message: &str) -> HttpResponse {
     HttpResponse::BadRequest().content_type("application/json").json(
       Response { message: message.to_string() }

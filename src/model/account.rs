@@ -46,7 +46,7 @@ pub struct AccountProfile {
     pub phone_number: Option<String>,
     pub date_of_birth: Option<i64>,
     pub gender: Option<Gender>,
-    pub profile_picture: Option<ImageStruct>,
+    pub profile_picture: Option<String>,
     pub biography: Option<String>,
     pub profile_verified: bool,
 
@@ -75,9 +75,9 @@ pub struct Friends {
     pub accepted_at: i64,
 }
 
-//blocked
+//account_blocked
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Blocked {
+pub struct AccountBlocked {
     pub blocked: String,
     pub blocked_by: String,
     pub blocked_at: i64,

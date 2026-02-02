@@ -122,6 +122,29 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
         return Ok(Response::internal_server_error(&error.to_string()));
     }
   
+    //creating account_social
+    let collection = db.collection::
+    <Account::AccountSocial>("account_social");
+
+    let account_social = Account::AccountSocial {
+        uuid: user_id.clone(),
+        like_count: 0,
+        follower_count: 0,
+        following_count: 0,
+        friend_count: 0,
+        blocked_count: 0,
+        modified_at: now,
+    };
+
+    let result = collection.insert_one(
+        account_social,
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
 
     //creating validation request
     let mut rng = rand::rng();
@@ -274,6 +297,18 @@ async fn delete_account(
 
     let collection = db.collection::
     <Account::AccountProfile>("account_profile");
+    let result = collection.delete_one(
+        doc!{"uuid": user_id},
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Err(Response::internal_server_error(&error.to_string()));
+    }
+
+    let collection = db.collection::
+    <Account::AccountSocial>("account_social");
     let result = collection.delete_one(
         doc!{"uuid": user_id},
     ).await;

@@ -19,5 +19,11 @@ pub use reply as Reply;
 pub mod comment;
 pub use comment as Comment;
 
+pub mod profile;
+pub use profile as Profile;
+
+pub mod conversation;
+pub use conversation as Conversation;
+
 pub mod web_socket;
 pub use web_socket as WebSocket;

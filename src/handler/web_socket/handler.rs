@@ -44,6 +44,7 @@ pub struct SocketIncomingTextModel {
   r#type: Conversation::TextType,
   reply_to: Option<String>,
   mentions: Option<Vec<Mention>>,
+  emoji: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -57,6 +58,7 @@ pub struct SocketOutgoingTextModel {
   audio: Option<AudioStruct>,
   video: Option<VideoStruct>,
   attachment: Option<AttachmentStruct>,
+  emoji: Option<String>,
   r#type: Conversation::TextType,
   reply_to: Option<String>,
   seen_by: Vec<String>,
@@ -186,6 +188,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
                 owner: self.user_id.clone(),
                 conversation_id: room_id.clone(),
                 text: incoming_text.text.clone(),
+                emoji: incoming_text.emoji.clone(),
                 mentions: incoming_text.mentions.clone(),
                 images: incoming_text.images.clone(),
                 audio: incoming_text.audio.clone(),
@@ -248,7 +251,6 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
         conversation_id: message.conversation_id.clone(),
         owner: message.owner.clone(),
         reply_to: message.reply_to.clone(),
-        seen_by: message.seen_by.clone(),
         created_at: message.created_at.clone(),
         r#type: message.r#type.clone(),
     };
@@ -264,118 +266,46 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
         return;
     }
 
-    match message_core.r#type {
-        Conversation::TextType::Text => {
-            let message_text = Conversation::MessageText {
-                uuid: message.uuid.clone(),
-                text: message.text.unwrap().clone(),
-                mentions: message.mentions.unwrap().clone(),
-            };
-
-            let collection = db.collection::<Conversation::MessageText>("message_text");
-
-            let result = collection.insert_one(
-                &message_text,
-            ).await;
-                
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
+    let message_content = Conversation::MessageContent {
+        message_id: message.uuid.clone(),
+        text: message.text.clone(),
+        audio: match message.audio {
+            None => None,
+            Some(audio) => Some(audio.uuid.clone()),
         },
-        Conversation::TextType::Image => {
-            let message_image = Conversation::MessageImage {
-                uuid: message.uuid.clone(),
-                images: message.images.unwrap().clone(),
-            };
-                    
-            let collection = db.collection::<Conversation::MessageImage>("message_image");
-                    
-            let result = collection.insert_one(
-                &message_image,
-            ).await;
-                    
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
+        video: match message.video {
+            None => None,
+            Some(video) => Some(video.uuid.clone()),
         },
-        Conversation::TextType::Audio => {
-            let message_audio = Conversation::MessageAudio {
-                uuid: message.uuid.clone(),
-                audio: message.audio.unwrap().clone(),
-            };
-
-            let collection = db.collection::<Conversation::MessageAudio>("message_audio");
-
-            let result = collection.insert_one(
-                &message_audio,
-            ).await;
-                    
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
+        images: match message.images {
+            None => None,
+            Some(images) => {
+                let mut image_uuids = Vec::new();
+                for image in images {
+                    image_uuids.push(image.uuid.clone());
+                }
+                Some(image_uuids)
+            },
         },
-        Conversation::TextType::Video => {
-            let message_video = Conversation::MessageVideo {
-                uuid: message.uuid.clone(),
-                video: message.video.unwrap().clone(),
-            };
-
-            let collection = db.collection::<Conversation::MessageVideo>("message_video");
-
-            let result = collection.insert_one(
-                &message_video,
-            ).await;
-                
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
+        attachment: match message.attachment {
+            None => None,
+            Some(attachment) => Some(attachment.uuid.clone()),
         },
-        Conversation::TextType::Attachment => {
-            let message_attachment = Conversation::MessageAttachment {
-                uuid: message.uuid.clone(),
-                attachment: message.attachment.clone().unwrap(),
-            };
-
-            let collection = db.collection::<Conversation::MessageAttachment>("message_attachment");
-
-            let result = collection.insert_one(
-                &message_attachment,
-            ).await;
-                
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
-        },
-        Conversation::TextType::Emoji => {
-            let message_emoji = Conversation::MessageEmoji {
-                uuid: message.uuid.clone(),
-                emoji: message.text.unwrap().clone(),
-            };
-
-            let collection = db.collection::<Conversation::MessageEmoji>("message_emoji");
-
-            let result = collection.insert_one(
-                &message_emoji,
-            ).await;
-    
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                session.abort_transaction().await.ok().unwrap();
-                return;
-            }
-        },
+        emoji: message.emoji.clone(),
+        mentions: message.mentions.clone(),
     };
 
+    let collection = db.collection::<Conversation::MessageContent>("message_content");
+    let result = collection.insert_one(
+        &message_content,
+    ).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return;
+    }
+
     /* DATABASE ACID COMMIT */
-    session.commit_transaction().await;
+    let _ = session.commit_transaction().await;
 }

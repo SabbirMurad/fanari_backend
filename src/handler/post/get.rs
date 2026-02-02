@@ -309,10 +309,30 @@ async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, Http
 
     let account_profile = option.unwrap();
 
+    let profile_picture: Option<ImageStruct> = match account_profile.profile_picture {
+        Some(image_id) => {
+            let collection = db.collection::<ImageStruct>("image");
+            let result = collection.find_one(doc!{"uuid": &image_id}).await;
+
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                return Err(Response::internal_server_error(&error.to_string()));
+            }
+
+            let option = result.unwrap();
+            if let None = option {
+                None
+            } else {
+                Some(option.unwrap())
+            }
+        },
+        None => None
+    };
+
     let post_owner = PostOwner {
         uuid: owner_id.to_string(),
         name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
-        image: account_profile.profile_picture.clone(),
+        image: profile_picture,
         owner_type: PostOwnerType::User,
         username: account_core.username.clone(),
         is_me: false,

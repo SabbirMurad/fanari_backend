@@ -251,30 +251,10 @@ pub async fn task(
 
     let account_profile = option.unwrap();
 
-    let profile_picture: Option<ImageStruct> = match account_profile.profile_picture {
-        Some(image_id) => {
-            let collection = db.collection::<ImageStruct>("image");
-            let result = collection.find_one(doc!{"uuid": &image_id}).await;
-
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Ok(Response::internal_server_error(&error.to_string()));
-            }
-
-            let option = result.unwrap();
-            if let None = option {
-                None
-            } else {
-                Some(option.unwrap())
-            }
-        },
-        None => None
-    };
-
     let post_owner = PostOwner {
         uuid: user_id.clone(),
         name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
-        image: profile_picture,
+        image: None,
         owner_type: Post::PostOwnerType::User,
         username: account_core.username.clone(),
         is_me: true,

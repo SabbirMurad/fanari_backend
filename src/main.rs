@@ -272,7 +272,9 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
-        .configure(Routes::web_socket::router)
+        .configure(Routes::WebSocket::router)
+        .configure(Routes::Conversation::router)
+        .configure(Routes::Profile::router)
         .configure(Routes::Emoji::router)
         .configure(Routes::Reply::router)
         .configure(Routes::Comment::router)

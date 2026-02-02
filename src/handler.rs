@@ -21,3 +21,6 @@ pub use web_socket as WebSocket;
 
 pub mod conversation;
 pub use conversation as Conversation;
+
+pub mod profile;
+pub use profile as Profile;

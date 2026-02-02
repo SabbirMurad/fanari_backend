@@ -10,8 +10,8 @@ pub use conversation as Conversation;
 pub mod post;
 pub use post as Post;
 
-pub mod page;
-pub use page as Page;
+// pub mod page;
+// pub use page as Page;
 
 pub mod comment;
 pub use comment as Comment;

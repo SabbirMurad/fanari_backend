@@ -1,5 +1,5 @@
+use super::Mention;
 use serde::{Deserialize, Serialize};
-use super::{ImageStruct, VideoStruct, AudioStruct, AttachmentStruct, Mention};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConversationType { Single, Group, }
@@ -23,26 +23,37 @@ pub struct ConversationCore {
     pub uuid: String,
     pub r#type: ConversationType,
     pub last_message_at: i64,
+    pub last_message_id: Option<String>,
     pub created_at: i64,
 }
 
-//group_conversation
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GroupConversation {
-    pub uuid: String,
-    pub owner: String,
-    pub admins: Vec<String>,
-    pub members: Vec<String>,
-    pub profile_picture: String,
-    pub name: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConversationRole { Owner, Admin, Member }
+impl std::fmt::Display for ConversationRole {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt,"{:?}", self)
+    }
 }
 
-//single_conversation
+//conversation_participant
 #[derive(Debug, Deserialize, Serialize)]
-pub struct SingleConversation {
-    pub uuid: String,
-    pub user_1: String,
-    pub user_2: String,
+pub struct ConversationParticipant {
+    pub conversation_id: String,
+    pub user_id: String,
+    pub role: ConversationRole,
+    pub joined_at: i64,
+    pub last_message_read_id: Option<String>,
+    pub is_favorite: bool,
+    pub is_muted: bool,
+}
+
+//group_conversation_metadata
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GroupConversationMetadata {
+    pub conversation_id: String,
+    pub name: String,
+    pub image: Option<String>,
+    pub owner_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,49 +72,27 @@ pub struct MessageCore {
     pub owner: String,
     pub r#type: TextType,
     pub reply_to: Option<String>,
-    pub seen_by: Vec<String>,
-    pub created_at: i64
+    pub created_at: i64,
 }
 
-//message_text
+//message_content
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageText {
-    pub uuid: String,
-    pub text: String,
-    pub mentions: Vec<Mention>
+pub struct MessageContent {
+    pub message_id: String,
+
+    pub text: Option<String>,
+    pub mentions: Option<Vec<Mention>>,
+    pub emoji: Option<String>,
+    pub images: Option<Vec<String>>,
+    pub audio: Option<String>,
+    pub video: Option<String>,
+    pub attachment: Option<String>,
 }
 
-//message_emoji
+//message_read
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageEmoji {
-    pub uuid: String,
-    pub emoji: String,
-}
-
-//message_image
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageImage {
-    pub uuid: String,
-    pub images: Vec<ImageStruct>,
-}
-
-//message_audio
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageAudio {
-    pub uuid: String,
-    pub audio: AudioStruct,
-}
-
-//message_video
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageVideo {
-    pub uuid: String,
-    pub video: VideoStruct,
-}
-
-//message_attachment
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessageAttachment {
-    pub uuid: String,
-    pub attachment: AttachmentStruct,
+pub struct MessageRead {
+    pub message_id: String,
+    pub user_id: String,
+    pub read_at: i64,
 }
