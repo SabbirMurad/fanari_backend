@@ -17,7 +17,7 @@ pub fn router(cfg: &mut web::ServiceConfig) {
         //List Conversation
         .route(
           "/list",
-          web::delete().to(Handler::Conversation::List::task)
+          web::get().to(Handler::Conversation::List::task)
         )
     );
 }
