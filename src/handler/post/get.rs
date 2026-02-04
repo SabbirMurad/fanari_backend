@@ -10,8 +10,6 @@ use crate::model::{
     ImageStruct,
     Post,
     Poll,
-    Account,
-    post::PostOwnerType
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -24,18 +22,6 @@ pub struct Query {
     is_nsfw: Option<bool>,
     limit: i64,
     page: i64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct PostOwner {
-    uuid: String,
-    name: String,
-    image: Option<ImageStruct>,
-    owner_type: Post::PostOwnerType,
-    username: String,
-    is_me: bool,
-    following: bool,
-    friend: bool,
 }
 
 pub async fn task(
@@ -78,7 +64,7 @@ pub async fn task(
     .skip((query.limit * (query.page - 1)) as u64).await.unwrap();
 
     let mut posts = Vec::new();
-    let mut owner_map = Map::new();
+
     while let  Some(result) = cursor.next().await {
         if let Err(error) = result {
             log::error!("{:?}", error);
@@ -128,6 +114,7 @@ pub async fn task(
                 "audio": &post_core.audio,
                 "poll": &poll,
                 "created_at": &post_core.created_at,
+                "owner_id": &post_core.owner,
             }),
         );
 
@@ -181,27 +168,6 @@ pub async fn task(
             "meta".to_string(),
             serde_json::json!({"liked": liked, "bookmarked": bookmarked})
         );
-
-        let owner_id = post_core.owner.clone();
-        if let Some(owner) = owner_map.get(&owner_id) {
-            response.insert("owner".to_string(), owner.clone());
-        }
-        else {
-            let post_owner = match get_post_owner(&db, &owner_id).await {
-                Ok(post_owner) => post_owner,
-                Err(error) => return Ok(error),
-            };
-
-            owner_map.insert(
-                owner_id.clone(),
-                serde_json::to_value(&post_owner).unwrap()
-            );
-
-            response.insert(
-                "owner".to_string(),
-                serde_json::to_value(&post_owner).unwrap()
-            );
-        }
 
         posts.push(response);
     }
@@ -272,76 +238,76 @@ async fn get_poll(db: &Database, poll_id: &Option<String>) -> Result<Option<serd
     Ok(Some(value))
 }
 
-async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, HttpResponse> {
-    let collection = db.collection::<Account::AccountCore>("account_core");
+// async fn get_post_owner(db: &Database, owner_id: &str) -> Result<PostOwner, HttpResponse> {
+//     let collection = db.collection::<Account::AccountCore>("account_core");
 
-    let result = collection.find_one(
-        doc!{"uuid": &owner_id}
-    ).await;
+//     let result = collection.find_one(
+//         doc!{"uuid": &owner_id}
+//     ).await;
 
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        return Err(Response::internal_server_error(&error.to_string()));
-    }
+//     if let Err(error) = result {
+//         log::error!("{:?}", error);
+//         return Err(Response::internal_server_error(&error.to_string()));
+//     }
 
-    let option = result.unwrap();
-    if let None = option {
-        return Err(Response::not_found("Account core not found"));
-    }
+//     let option = result.unwrap();
+//     if let None = option {
+//         return Err(Response::not_found("Account core not found"));
+//     }
 
-    let account_core = option.unwrap();
+//     let account_core = option.unwrap();
 
-    let collection = db.collection::<Account::AccountProfile>("account_profile");
+//     let collection = db.collection::<Account::AccountProfile>("account_profile");
 
-    let result = collection.find_one(
-        doc!{"uuid": &owner_id}
-    ).await;
+//     let result = collection.find_one(
+//         doc!{"uuid": &owner_id}
+//     ).await;
 
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        return Err(Response::internal_server_error(&error.to_string()));
-    }
+//     if let Err(error) = result {
+//         log::error!("{:?}", error);
+//         return Err(Response::internal_server_error(&error.to_string()));
+//     }
 
-    let option = result.unwrap();
-    if let None = option {
-        return Err(Response::not_found("Account profile not found"));
-    }
+//     let option = result.unwrap();
+//     if let None = option {
+//         return Err(Response::not_found("Account profile not found"));
+//     }
 
-    let account_profile = option.unwrap();
+//     let account_profile = option.unwrap();
 
-    let profile_picture: Option<ImageStruct> = match account_profile.profile_picture {
-        Some(image_id) => {
-            let collection = db.collection::<ImageStruct>("image");
-            let result = collection.find_one(doc!{"uuid": &image_id}).await;
+//     let profile_picture: Option<ImageStruct> = match account_profile.profile_picture {
+//         Some(image_id) => {
+//             let collection = db.collection::<ImageStruct>("image");
+//             let result = collection.find_one(doc!{"uuid": &image_id}).await;
 
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Err(Response::internal_server_error(&error.to_string()));
-            }
+//             if let Err(error) = result {
+//                 log::error!("{:?}", error);
+//                 return Err(Response::internal_server_error(&error.to_string()));
+//             }
 
-            let option = result.unwrap();
-            if let None = option {
-                None
-            } else {
-                Some(option.unwrap())
-            }
-        },
-        None => None
-    };
+//             let option = result.unwrap();
+//             if let None = option {
+//                 None
+//             } else {
+//                 Some(option.unwrap())
+//             }
+//         },
+//         None => None
+//     };
 
-    let post_owner = PostOwner {
-        uuid: owner_id.to_string(),
-        name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
-        image: profile_picture,
-        owner_type: PostOwnerType::User,
-        username: account_core.username.clone(),
-        is_me: false,
-        following: false,
-        friend: false
-    };
+//     let post_owner = PostOwner {
+//         uuid: owner_id.to_string(),
+//         name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
+//         image: profile_picture,
+//         owner_type: PostOwnerType::User,
+//         username: account_core.username.clone(),
+//         is_me: false,
+//         following: false,
+//         friend: false
+//     };
 
-    Ok(post_owner)
-}
+//     Ok(post_owner)
+// }
 
 async fn get_images(db: &Database, image_ids: Vec<String>) -> Result<Vec<ImageStruct>, HttpResponse> {
     let mut images = Vec::new();

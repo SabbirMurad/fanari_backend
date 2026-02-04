@@ -6,8 +6,8 @@ pub fn router(cfg: &mut web::ServiceConfig) {
         web::scope("/api/profile")
         //Get
         .route(
-          "/{target_id}",
-          web::get().to(Handler::Profile::Get::task)
+          "/list",
+          web::post().to(Handler::Profile::List::task)
         )
         .route(
           "/myself/details",
