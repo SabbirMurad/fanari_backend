@@ -21,7 +21,10 @@ pub struct ReqQuery {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ParticipantQuery { conversation_id: String}
+pub struct ParticipantQuery {
+    conversation_id: String,
+    user_id: String,
+}
 
 pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<HttpResponse, Error> {
     let user = require_access(
@@ -32,7 +35,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
     let user_id = user.user_id;
 
     let db = MongoDB.connect();
-    let collection = db.collection::<ParticipantQuery>("conversation_participant");
+    let collection = db.collection::<Conversation::ConversationParticipant>("conversation_participant");
 
     let result = collection.find(doc!{
         "user_id": &user_id
@@ -59,10 +62,13 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
     let offset = req_query.offset.unwrap_or(0) as i64;
 
     let result = collection.find(doc!{
-        "conversation_id": {
+        "uuid": {
             "$in": conversation_ids
         }
-    }).sort(doc! { "created_at": -1 })
+    }).sort(doc! {
+        "last_message_at": -1,
+        "created_at": -1
+    })
     .limit(limit)
     .skip(offset as u64).await;
 
@@ -93,7 +99,9 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 if let Err(error) = result {
                     log::error!("{:?}", error);
-                    return Ok(Response::internal_server_error(&error.to_string()));
+                    return Ok(Response::internal_server_error(
+                        &error.to_string()
+                    ));
                 }
 
                 let option = result.unwrap();
@@ -209,19 +217,39 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
                     None => None
                 };
 
+                // Getting account status
+                let collection = db.collection::<Account::AccountStatus>("account_status");
+                let result = collection.find_one(doc!{"uuid": &user_id}).await;
+
+                if let Err(error) = result {
+                    log::error!("{:?}", error);
+                    return Ok(Response::internal_server_error(
+                        &error.to_string())
+                    );
+                }
+
+                let option = result.unwrap();
+                if let None = option {
+                    return Ok(Response::not_found("Account status not found"));
+                }
+
+                let account_status = option.unwrap();
+
                 response.push(json!({
                     "core": conversation_core,
                     "single_metadata": json!({
                         "user_id": account_profile.uuid,
                         "first_name": account_profile.first_name,
                         "last_name": account_profile.last_name,
-                        "image": image
+                        "image": image,
+                        "online": account_status.online,
+                        "last_seen": account_status.last_seen
                     })
                 }));
             }
         }
     }
-    
+
     Ok(
         HttpResponse::Ok()
         .content_type("application/json")

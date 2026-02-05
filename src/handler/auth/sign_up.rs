@@ -146,6 +146,50 @@ pub async fn task(form_data: web::Json<ReqBody>) -> Result<HttpResponse, Error> 
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
+    //Create account_status
+    let collection = db.collection::
+    <Account::AccountStatus>("account_status");
+
+    let account_status = Account::AccountStatus {
+        uuid: user_id.clone(),
+        online: false,
+        last_seen: now,
+    };
+
+    let result = collection.insert_one(
+        account_status,
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    //Create account_notification_setting
+    let collection = db.collection::
+    <Account::AccountNotificationSettings>("account_notification_setting");
+
+    let account_notification_setting = Account::AccountNotificationSettings {
+        uuid: user_id.clone(),
+        appreciation_notification: true,
+        comment_notification: true,
+        following_notification: true,
+        friend_request_notification: true,
+        tag_notification: false,
+        modified_at: now,
+    };
+
+    let result = collection.insert_one(
+        account_notification_setting,
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
     //creating validation request
     let mut rng = rand::rng();
     let validation_code: u32 = rng.random_range(100000..999999);

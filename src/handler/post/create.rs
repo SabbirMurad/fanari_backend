@@ -60,7 +60,7 @@ pub async fn task(
 ) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
-        AccessRequirement::Role(AccountRole::Administrator)
+        AccessRequirement::AnyToken
     )?;
 
     let user_id = user.user_id;
@@ -214,74 +214,6 @@ pub async fn task(
         images.push(image);
     }
 
-    // getting account info
-    let collection = db.collection::<Account::AccountCore>("account_core");
-    let result = collection.find_one(doc!{"uuid": &user_id}).await;
-    
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::internal_server_error(&error.to_string()));
-    }
-    
-    let option = result.unwrap();
-
-    if let None = option {
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::not_found("user not found"));
-    }
-
-    let account_core = option.unwrap();
-
-    let collection = db.collection::<Account::AccountProfile>("account_profile");
-    let result = collection.find_one(doc!{"uuid": &user_id}).await;
-    
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::internal_server_error(&error.to_string()));
-    }
-    
-    let option = result.unwrap();
-
-    if let None = option {
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::not_found("user not found"));
-    }
-
-    let account_profile = option.unwrap();
-
-    let profile_picture: Option<ImageStruct> = match account_profile.profile_picture {
-        Some(image_id) => {
-            let collection = db.collection::<ImageStruct>("image");
-            let result = collection.find_one(doc!{"uuid": &image_id}).await;
-
-            if let Err(error) = result {
-                log::error!("{:?}", error);
-                return Ok(Response::internal_server_error(&error.to_string()));
-            }
-
-            let option = result.unwrap();
-            if let None = option {
-                None
-            } else {
-                Some(option.unwrap())
-            }
-        },
-        None => None
-    };
-
-    let post_owner = PostOwner {
-        uuid: user_id.clone(),
-        name: format!("{} {}", account_profile.first_name.clone(), account_profile.last_name.clone()),
-        image: profile_picture,
-        owner_type: Post::PostOwnerType::User,
-        username: account_core.username.clone(),
-        is_me: true,
-        following: false,
-        friend: false
-    };
-
     /* DATABASE ACID COMMIT */
     if let Err(error) = session.commit_transaction().await {
         log::error!("{:?}", error);
@@ -294,6 +226,7 @@ pub async fn task(
         .json(json!({
             "core": json!({
                 "uuid": &post_core.uuid,
+                "owner_id": &post_core.owner,
                 "caption": &post_core.caption,
                 "images": &images,
                 "videos": &post_core.videos,
@@ -306,7 +239,6 @@ pub async fn task(
                 "bookmarked": false,
                 "liked": false,
             }),
-            "owner": serde_json::to_value(&post_owner).unwrap()
         }))
     )
 }

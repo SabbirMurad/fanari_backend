@@ -90,7 +90,14 @@ pub struct AccountStatus {
 
     pub online: bool,
     pub last_seen: i64,
-    pub fcm_tokens: Vec<String>,
+}
+
+//fcm_token
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FcmToken {
+    pub uuid: String,
+    pub token: String,
+    pub created_at: i64,
 }
 
 //account_notification_settings
