@@ -57,11 +57,18 @@ pub async fn task(
 
     let collection = db.collection::<Post::PostCore>("post_core");
     
-    let mut cursor = collection.find(
+    let result = collection.find(
         filter,
     ).sort(doc! { "created_at": -1 })
     .limit(query.limit)
-    .skip((query.limit * (query.page - 1)) as u64).await.unwrap();
+    .skip((query.limit * (query.page - 1)) as u64).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    let mut cursor = result.unwrap();
 
     let mut posts = Vec::new();
 
@@ -103,13 +110,62 @@ pub async fn task(
             Err(error) => return Ok(error),
         };
 
+        //getting the mentions
+        let collection = db.collection::<Post::PostMention>("post_mention");
+        let result = collection.find(doc!{
+            "post_id": &post_core.uuid
+        }).await;
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+
+        let mut mention_cursor = result.unwrap();
+
+        let mut mentions = Vec::new();
+        
+        while let Some(result) = mention_cursor.next().await {
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+
+            mentions.push(result.unwrap());
+        }
+
+        //getting the tags
+        let collection = db.collection::<Post::PostTag>("post_tag");
+        let result = collection.find(doc!{
+            "post_id": &post_core.uuid
+        }).await;
+
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+
+        let mut tag_cursor = result.unwrap();
+
+        let mut tags = Vec::new();
+        
+        while let Some(result) = tag_cursor.next().await {
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+
+            tags.push(result.unwrap().tag);
+        }
+
         response.insert(
             "core".to_string(),
             serde_json::json!({
                 "uuid": &post_core.uuid,
                 "caption": &post_core.caption,
                 "images": &images,
-                "mentions": &post_core.mentions,
+                "tags": &tags,
+                "mentions": &mentions,
                 "videos": &post_core.videos,
                 "audio": &post_core.audio,
                 "poll": &poll,

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use super::{ VideoStruct, AudioStruct, Mention};
+use super::{ VideoStruct, AudioStruct};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PostOwnerType { User, Page }
@@ -35,12 +35,10 @@ pub struct PostCore {
     pub images: Vec<String>,
     pub videos: Vec<VideoStruct>,
     pub audio: Option<AudioStruct>,
-    pub mentions: Vec<Mention>,
     pub poll: Option<String>,
 
     pub owner_type: PostOwnerType,
     pub visibility: PostVisibility,
-    pub tags: Vec<String>,
     pub is_nsfw: bool,
     pub content_warning: Option<String>,
 
@@ -49,6 +47,22 @@ pub struct PostCore {
     pub deleted_at: Option<i64>,
     pub suspended_at: Option<i64>,
     pub suspended_by: Option<String>,
+}
+
+//post_mention
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PostMention {
+    pub post_id: String,
+    pub user_id: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+//post_tag
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PostTag {
+    pub post_id: String,
+    pub tag: String,
 }
 
 //post_stat

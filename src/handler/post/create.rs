@@ -14,7 +14,6 @@ use crate::model::{
     Post,
     VideoStruct,
     ImageStruct,
-    Account::{self, AccountRole},
     Poll
 };
 
@@ -41,22 +40,10 @@ pub struct PollBody {
     r#type: Poll::PollType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct PostOwner {
-    uuid: String,
-    name: String,
-    image: Option<ImageStruct>,
-    owner_type: Post::PostOwnerType,
-    username: String,
-    is_me: bool,
-    following: bool,
-    friend: bool,
-}
-
 
 pub async fn task(
     req: HttpRequest,
-    form_data: web::Json<ReqBody>
+    req_body: web::Json<ReqBody>
 ) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
@@ -65,7 +52,7 @@ pub async fn task(
 
     let user_id = user.user_id;
 
-    if let Err(res) = check_empty_fields(&form_data) {
+    if let Err(res) = check_empty_fields(&req_body) {
         return Ok(Response::bad_request(&res));
     }
 
@@ -78,7 +65,7 @@ pub async fn task(
   
     let owner_type;
     let owner;
-    if let Some(page_id) = &form_data.page_id {
+    if let Some(page_id) = &req_body.page_id {
         if let Err(error) = check_page_authority(
             &db,
             &mut session,
@@ -100,7 +87,7 @@ pub async fn task(
     let now = Utc::now().timestamp_millis();
     
     let mut poll_id = None;
-    if let Some(poll) = &form_data.poll {
+    if let Some(poll) = &req_body.poll {
         let uuid = Uuid::new_v4().to_string();
         let collection = db.collection::<Poll::Poll>("poll");
         let result = collection.insert_one(
@@ -125,16 +112,14 @@ pub async fn task(
         uuid: post_id.clone(),
         owner: owner.clone(),
         owner_type: owner_type.clone(),
-        caption: form_data.caption.clone(),
-        images: form_data.images.clone(),
-        videos: form_data.videos.clone(),
-        audio: form_data.audio.clone(),
-        mentions: form_data.mentions.clone(),
+        caption: req_body.caption.clone(),
+        images: req_body.images.clone(),
+        videos: req_body.videos.clone(),
+        audio: req_body.audio.clone(),
         poll: poll_id,
-        tags: form_data.tags.clone(),
-        visibility: form_data.visibility.clone(),
-        is_nsfw: form_data.is_nsfw.clone(),
-        content_warning: form_data.content_warning.clone(),
+        visibility: req_body.visibility.clone(),
+        is_nsfw: req_body.is_nsfw.clone(),
+        content_warning: req_body.content_warning.clone(),
         modified_at: now,
         created_at: now,
         deleted_at: None,
@@ -167,6 +152,46 @@ pub async fn task(
         &post_stat,
     ).await;
     
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    //Creating the mentions
+    let mut mentions = Vec::new();
+    for mention in req_body.mentions.clone() {
+        let mention_struct = Post::PostMention {
+            post_id: post_core.uuid.clone(),
+            user_id: mention.user_id,
+            start: mention.start,
+            end: mention.end
+        };
+
+        mentions.push(mention_struct);
+    }
+
+    let collection = db.collection::<Post::PostMention>("post_mention");
+    let result = collection.insert_many(&mentions).await;
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    //Creating the tags
+    let mut tags = Vec::new();
+    for tag in req_body.tags.clone() {
+        let tag_struct = Post::PostTag {
+            post_id: post_core.uuid.clone(),
+            tag: tag
+        };
+
+        tags.push(tag_struct);
+    }
+
+    let collection = db.collection::<Post::PostTag>("post_tag");
+    let result = collection.insert_many(&tags).await;
     if let Err(error) = result {
         log::error!("{:?}", error);
         session.abort_transaction().await.ok().unwrap();
@@ -231,7 +256,8 @@ pub async fn task(
                 "images": &images,
                 "videos": &post_core.videos,
                 "audio": &post_core.audio,
-                "mentions": &post_core.mentions,
+                "mentions": &mentions,
+                "tags": req_body.tags.clone(),
                 "created_at": &post_core.created_at,
             }),
             "stat": &post_stat,
