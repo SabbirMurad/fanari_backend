@@ -4,14 +4,14 @@ use futures::StreamExt;
 use actix_web_actors::ws;
 use super::WsHandler::WsConn;
 use serde::{Deserialize, Serialize};
-use crate::utils::response::Response;
+use crate::{model::Conversation, utils::response::Response};
 use crate::builtins::mongo::MongoDB;
 use crate::Handler::WebSocket::lobby::Lobby;
 use actix_web::{Error, HttpRequest, HttpResponse, web::{Data, Payload}};
 use crate::Middleware::Auth::{require_access, AccessRequirement};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GroupId { uuid: String}
+pub struct ConversationRetrieve { conversation_id: String }
 
 
 pub async fn task(
@@ -29,12 +29,12 @@ pub async fn task(
   println!("{} connected\n", user_id);
 
   let mut group_ids = Vec::new();
-  let collection = MongoDB.connect().collection::<GroupId>("single_conversation");
+  let db = MongoDB.connect();
+
+  let collection = db.collection::<ConversationRetrieve>("conversation_participant");
+
   let result = collection.find(
-    doc!{"$or":[
-      {"user_1": &user_id},
-      {"user_2": &user_id},
-    ]},
+    doc!{"user_id": &user_id},
   ).await;
   
   if let Err(error) = result {
@@ -50,7 +50,7 @@ pub async fn task(
     }
   
     let conversation = result.unwrap();
-    group_ids.push(conversation.uuid);
+    group_ids.push(conversation.conversation_id);
   }
 
   let ws = WsConn::new(

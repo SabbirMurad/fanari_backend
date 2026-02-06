@@ -35,7 +35,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
     let user_id = user.user_id;
 
     let db = MongoDB.connect();
-    let collection = db.collection::<Conversation::ConversationParticipant>("conversation_participant");
+    let collection = db.collection::<ParticipantQuery>("conversation_participant");
 
     let result = collection.find(doc!{
         "user_id": &user_id
@@ -158,7 +158,9 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 if let Err(error) = result {
                     log::error!("{:?}", error);
-                    return Ok(Response::internal_server_error(&error.to_string()));
+                    return Ok(Response::internal_server_error(
+                        &error.to_string()
+                    ));
                 }
 
                 let option = result.unwrap();
@@ -219,7 +221,9 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 // Getting account status
                 let collection = db.collection::<Account::AccountStatus>("account_status");
-                let result = collection.find_one(doc!{"uuid": &user_id}).await;
+                let result = collection.find_one(
+                    doc!{"uuid": &conversation_participant.user_id}
+                ).await;
 
                 if let Err(error) = result {
                     log::error!("{:?}", error);
