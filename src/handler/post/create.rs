@@ -158,45 +158,51 @@ pub async fn task(
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
-    //Creating the mentions
     let mut mentions = Vec::new();
-    for mention in req_body.mentions.clone() {
-        let mention_struct = Post::PostMention {
-            post_id: post_core.uuid.clone(),
-            user_id: mention.user_id,
-            start: mention.start,
-            end: mention.end
-        };
-
-        mentions.push(mention_struct);
+    if req_body.mentions.len() > 0 {
+        //Creating the mentions
+        for mention in req_body.mentions.clone() {
+            let mention_struct = Post::PostMention {
+                post_id: post_core.uuid.clone(),
+                user_id: mention.user_id,
+                start: mention.start,
+                end: mention.end
+            };
+    
+            mentions.push(mention_struct);
+        }
+    
+        let collection = db.collection::<Post::PostMention>("post_mention");
+        let result = collection.insert_many(&mentions).await;
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
     }
 
-    let collection = db.collection::<Post::PostMention>("post_mention");
-    let result = collection.insert_many(&mentions).await;
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::internal_server_error(&error.to_string()));
-    }
-
-    //Creating the tags
+    
     let mut tags = Vec::new();
-    for tag in req_body.tags.clone() {
-        let tag_struct = Post::PostTag {
-            post_id: post_core.uuid.clone(),
-            tag: tag
-        };
-
-        tags.push(tag_struct);
+    if req_body.tags.len() > 0 {
+        //Creating the tags
+        for tag in req_body.tags.clone() {
+            let tag_struct = Post::PostTag {
+                post_id: post_core.uuid.clone(),
+                tag: tag
+            };
+    
+            tags.push(tag_struct);
+        }
+    
+        let collection = db.collection::<Post::PostTag>("post_tag");
+        let result = collection.insert_many(&tags).await;
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
     }
 
-    let collection = db.collection::<Post::PostTag>("post_tag");
-    let result = collection.insert_many(&tags).await;
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::internal_server_error(&error.to_string()));
-    }
 
     // Getting The images
     let filter = doc! {
