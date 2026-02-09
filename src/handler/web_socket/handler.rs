@@ -37,7 +37,7 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 pub struct SocketIncomingTextModel {
   conversation_id: String,
   text: Option<String>,
-  images: Option<Vec<ImageStruct>>,
+  images: Option<Vec<String>>,
   audio: Option<AudioStruct>,
   video: Option<VideoStruct>,
   attachment: Option<AttachmentStruct>,
@@ -54,7 +54,7 @@ pub struct SocketOutgoingTextModel {
   conversation_id: String,
   text: Option<String>,
   mentions: Option<Vec<Mention>>,
-  images: Option<Vec<ImageStruct>>,
+  images: Option<Vec<String>>,
   audio: Option<AudioStruct>,
   video: Option<VideoStruct>,
   attachment: Option<AttachmentStruct>,
@@ -277,16 +277,7 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
             None => None,
             Some(video) => Some(video.uuid.clone()),
         },
-        images: match message.images {
-            None => None,
-            Some(images) => {
-                let mut image_uuids = Vec::new();
-                for image in images {
-                    image_uuids.push(image.uuid.clone());
-                }
-                Some(image_uuids)
-            },
-        },
+        images: message.images.clone(),
         attachment: match message.attachment {
             None => None,
             Some(attachment) => Some(attachment.uuid.clone()),

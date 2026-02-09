@@ -12,7 +12,7 @@ use crate::model::{AllowedImageType, ImageStruct, AssetUsedAt};
 
 
 pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
-    let mut images_data = Vec::new();
+    let mut images_data: Vec<(String, Vec<u8>)> = Vec::new();
     let mut text_fields: HashMap<String, String> = HashMap::new();
     let mut image_ids: Vec<String> = Vec::new();
 
@@ -48,8 +48,8 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
         }
 
         match file_name {
-            Some(name) => {
-                images_data.push((name.clone(), name.to_string(), bytes));
+            Some(_) => {
+                images_data.push((field_name.clone(), bytes));
             },
             None => {
                 text_fields.insert(
@@ -65,26 +65,35 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
     let created_at = Utc::now().timestamp_millis();
     let sqlite_conn = sqlite::connect(sqlite::DBF::IMG).unwrap();
 
-    for (i, (_field_name, _filename, bytes)) in images_data.iter().enumerate() {
-        let blur_hash_key = format!("blur_hash_{}", i);
-        let width_key = format!("width_{}", i);
-        let height_key = format!("height_{}", i);
-        let used_at_key = format!("used_at_{}", i);
+    println!("{} images to process", images_data.len());
+
+    for (field_name, bytes) in images_data.iter() {
+        println!("{}", field_name);
+        let index: usize = field_name
+            .split('_')
+            .nth(1)
+            .unwrap()
+            .parse()
+            .unwrap();
 
         let blur_hash = text_fields
-            .get(blur_hash_key.as_str())
+            .get(&format!("blur_hash_{}", index))
             .unwrap();
- 
+
         let width = text_fields
-            .get(width_key.as_str())
+            .get(&format!("width_{}", index))
             .unwrap();
 
         let height = text_fields
-            .get(height_key.as_str())
+            .get(&format!("height_{}", index))
             .unwrap();
 
         let used_at = text_fields
-            .get(used_at_key.as_str())
+            .get(&format!("used_at_{}", index))
+            .unwrap();
+
+        let temporary = text_fields
+            .get(&format!("temporary_{}", index))
             .unwrap();
 
         // Converting to webp
@@ -126,7 +135,7 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             original_size: bytes.len(),
             webp_size: webp_bytes.len(),
             used_at: AssetUsedAt::from_str(used_at.as_str()),
-            temporary: true,
+            temporary: temporary.parse().unwrap(),
             deleted: false,
             original_type: image_type.to_str().to_string(),
         };
@@ -153,10 +162,6 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
         } else {
             image_ids.push(uuid.clone());
         }
-  
-
-        // Storing the id for the response
-        image_ids.push(uuid.clone());
     }
 
     Ok(HttpResponse::Ok().content_type("application/json").json(image_ids))

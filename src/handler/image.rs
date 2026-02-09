@@ -1,6 +1,9 @@
 pub mod metadata;
 pub use metadata as Metadata;
 
+pub mod metadata_bulk;
+pub use metadata_bulk as MetadataBulk;
+
 pub mod original;
 pub use original as Original;
 
