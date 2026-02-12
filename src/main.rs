@@ -273,6 +273,7 @@ async fn main() -> io::Result<()> {
             })
         })
         .configure(Routes::WebSocket::router)
+        .configure(Routes::Video::router)
         .configure(Routes::Conversation::router)
         .configure(Routes::Profile::router)
         .configure(Routes::Emoji::router)
@@ -280,6 +281,9 @@ async fn main() -> io::Result<()> {
         .configure(Routes::Comment::router)
         .configure(Routes::Post::router)
         .configure(Routes::Auth::router)
+        .configure(Routes::Support::router)
+        .configure(Routes::Report::router)
+        .configure(Routes::Metadata::router)
         .configure(Routes::Image::router)
         .configure(Routes::Pages::router)
     });

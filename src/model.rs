@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+pub mod metadata;
+pub use metadata as Metadata;
+
 pub mod account;
 pub use account as Account;
-
 
 pub mod conversation;
 pub use conversation as Conversation;
@@ -10,11 +12,14 @@ pub use conversation as Conversation;
 pub mod post;
 pub use post as Post;
 
-// pub mod page;
-// pub use page as Page;
+pub mod report;
+pub use report as Report;
 
 pub mod comment;
 pub use comment as Comment;
+
+pub mod support;
+pub use support as Support;
 
 pub mod reply;
 pub use reply as Reply;
@@ -29,65 +34,65 @@ pub use notification as Notification;
 pub enum AllowedImageType { Gif, Png, Jpeg, Webp }
 
 impl std::fmt::Display for AllowedImageType {
-  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      AllowedImageType::Gif => write!(fmt, "image/gif"),
-      AllowedImageType::Png => write!(fmt, "image/png"),
-      AllowedImageType::Jpeg => write!(fmt, "image/jpeg"),
-      AllowedImageType::Webp => write!(fmt, "image/webp"),
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AllowedImageType::Gif => write!(fmt, "image/gif"),
+            AllowedImageType::Png => write!(fmt, "image/png"),
+            AllowedImageType::Jpeg => write!(fmt, "image/jpeg"),
+            AllowedImageType::Webp => write!(fmt, "image/webp"),
+        }
     }
-  }
 }
 
 impl AllowedImageType {
-  pub fn to_str(&self) -> &str {
-    match self {
-      AllowedImageType::Gif => "image/gif",
-      AllowedImageType::Png => "image/png",
-      AllowedImageType::Jpeg => "image/jpeg",
-      AllowedImageType::Webp => "image/webp",
+    pub fn to_str(&self) -> &str {
+        match self {
+            AllowedImageType::Gif => "image/gif",
+            AllowedImageType::Png => "image/png",
+            AllowedImageType::Jpeg => "image/jpeg",
+            AllowedImageType::Webp => "image/webp",
+        }
     }
-  }
 
-  pub fn from_str(s: &str) -> AllowedImageType {
-    match s {
-      "image/gif" => AllowedImageType::Gif,
-      "image/png" => AllowedImageType::Png,
-      "image/jpeg" => AllowedImageType::Jpeg,
-      "image/webp" => AllowedImageType::Webp,
-      _ => AllowedImageType::Jpeg
+    pub fn from_str(s: &str) -> AllowedImageType {
+        match s {
+            "image/gif" => AllowedImageType::Gif,
+            "image/png" => AllowedImageType::Png,
+            "image/jpeg" => AllowedImageType::Jpeg,
+            "image/webp" => AllowedImageType::Webp,
+            _ => AllowedImageType::Jpeg
+        }
     }
-  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AssetUsedAt {
-  ProfilePic,
-  CoverPic,
-  Post,
-  Comment,
-  Chat, 
-  VideoThumbnail
+    ProfilePic,
+    CoverPic,
+    Post,
+    Comment,
+    Chat, 
+    VideoThumbnail
 }
 
 impl std::fmt::Display for AssetUsedAt {
-  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(fmt,"{:?}", self)
-  }
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt,"{:?}", self)
+    }
 }
 
 impl AssetUsedAt {
-  pub fn from_str(s: &str) -> AssetUsedAt {
-    match s {
-      "ProfilePic" => AssetUsedAt::ProfilePic,
-      "CoverPic" => AssetUsedAt::CoverPic,
-      "Post" => AssetUsedAt::Post,
-      "Comment" => AssetUsedAt::Comment,
-      "Chat" => AssetUsedAt::Chat,
-      "VideoThumbnail" => AssetUsedAt::VideoThumbnail,
-      _ => AssetUsedAt::ProfilePic
+    pub fn from_str(s: &str) -> AssetUsedAt {
+        match s {
+            "ProfilePic" => AssetUsedAt::ProfilePic,
+            "CoverPic" => AssetUsedAt::CoverPic,
+            "Post" => AssetUsedAt::Post,
+            "Comment" => AssetUsedAt::Comment,
+            "Chat" => AssetUsedAt::Chat,
+            "VideoThumbnail" => AssetUsedAt::VideoThumbnail,
+            _ => AssetUsedAt::ProfilePic
+        }
     }
-  }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -27,3 +27,15 @@ pub use conversation as Conversation;
 
 pub mod web_socket;
 pub use web_socket as WebSocket;
+
+pub mod video;
+pub use video as Video;
+
+pub mod metadata;
+pub use metadata as Metadata;
+
+pub mod report;
+pub use report as Report;
+
+pub mod support;
+pub use support as Support;

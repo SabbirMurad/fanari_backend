@@ -1,6 +1,15 @@
 pub mod image;
 pub use image as Image;
 
+pub mod metadata;
+pub use metadata as Metadata;
+
+pub mod report;
+pub use report as Report;
+
+pub mod support;
+pub use support as Support;
+
 pub mod emoji;
 pub use emoji as Emoji;
 
@@ -24,3 +33,6 @@ pub use conversation as Conversation;
 
 pub mod profile;
 pub use profile as Profile;
+
+pub mod video;
+pub use video as Video;
