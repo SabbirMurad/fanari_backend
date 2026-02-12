@@ -4,7 +4,6 @@ use crate::builtins::mongo::MongoDB;
 use actix_web::{ Error, HttpResponse};
 use crate::utils::response::Response;
 
-
 pub async fn task() -> Result<HttpResponse, Error> {
     let db = MongoDB.connect();
 
@@ -21,11 +20,7 @@ pub async fn task() -> Result<HttpResponse, Error> {
 
     let option = result.unwrap();
     if let None = option {
-        return Ok(
-            HttpResponse::Ok()
-            .content_type("application/json")
-            .json("{}")
-        );
+        return Ok(Response::not_found("App metadata not found"));
     }
 
     let app_info = option.unwrap();

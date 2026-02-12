@@ -120,6 +120,8 @@ pub struct VideoStruct {
     pub size: usize,
     pub used_at: AssetUsedAt,
     pub created_at: i64,
+    pub temporary: bool,
+    pub deleted: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

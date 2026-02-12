@@ -10,7 +10,7 @@ use crate::Middleware::Auth::{require_access, AccessRequirement};
 
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct PostData {
+pub struct PostData {
   pub r#type: ReportType,
   pub reported_on: ReportedOn,
   pub reported_uuid: String,

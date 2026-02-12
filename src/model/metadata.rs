@@ -15,6 +15,10 @@ pub struct AppMetadata {
 
     pub emoji_pack_version: i64,
 
+    pub terms_of_service: String,
+    pub privacy_policy: String,
+    pub community_guideline: String,
+
     pub created_at: i64,
     pub created_by: String,
     pub updated_at: Option<i64>,

@@ -6,7 +6,7 @@ use crate::Middleware::Auth::{require_access, AccessRequirement};
 
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct ReqBody {
+pub struct ReqBody {
   field_1: String,
   field_2: String,
 }

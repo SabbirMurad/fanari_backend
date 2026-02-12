@@ -24,13 +24,5 @@ pub fn router(cfg: &mut web::ServiceConfig) {
             "/segment/{video_id}",
             web::get().to(Handler::Video::Segment::task)
         )
-        .route(
-            "/thumbnail/{video_id}",
-            web::get().to(Handler::Video::Thumbnail::task)
-        )
-        .route(
-            "/thumbnail/upload",
-            web::post().to(Handler::Video::UploadThumbnail::task)
-        )
     );
 }
