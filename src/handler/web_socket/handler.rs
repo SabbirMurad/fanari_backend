@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use crate::builtins::mongo::MongoDB;
 use serde::{Deserialize, Serialize};
 use super::WsMessage::{ClientActorMessage, Connect, Disconnect, WsMessage, DirectMessage, RoomSignalMessage};
+use serde_json::Value;
 
 use actix::{
     fut,
@@ -28,6 +29,13 @@ use crate::Model::{
     AttachmentStruct,
     Mention
 };
+
+#[derive(Debug, Deserialize)]
+pub struct WsEnvelope {
+  #[serde(rename = "type")]
+  pub msg_type: String,
+  pub payload: Value,  // stays as raw JSON until we know the type
+}
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -74,6 +82,12 @@ struct IncomingSignal {
     call_type: Option<String>,
     enabled: Option<bool>,
     muted: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct TypingPayload {
+    conversation_id: String,
+    user_id: String,
 }
 
 pub struct WsConn {
@@ -145,31 +159,35 @@ impl WsConn {
         });
     }
 
-   fn handle_text_message(&mut self, text: String) {
-        let str = text.to_string();
-        let arr: Vec<&str> = str.split("::").collect::<Vec<&str>>();
+   fn handle_text_message(&mut self, raw_str: String) {
+        // Single parse point — no splitting, no prefix matching
+        let envelope: Result<WsEnvelope, _> = serde_json::from_str(&raw_str);
 
-        if arr.len() < 2 {
-            log::error!("Unsupported websocket message.");
+        if let Err(error) = envelope {
+            log::error!("Invalid envelope: {:?}", error);
             return;
         }
 
-        match arr[0] {
-            "%text%"        => self.handle_text(arr[1]),
-            "%typing%"      => self.handle_typing(&str, arr[1]),
-            "%call_signal%" => self.handle_call_signal(arr[1]),
-            _               => log::warn!("Unknown message prefix: {}", arr[0]),
+        let envelope = envelope.unwrap();
+
+        match envelope.msg_type.as_str() {
+            "text"        => self.handle_text(envelope.payload),
+            "typing"      => self.handle_typing(envelope.payload),
+            "call_signal" => self.handle_call_signal(envelope.payload),
+            _   => log::warn!("Unknown message prefix: {}", envelope.msg_type),
         }
     }
 
 
-    fn handle_text(&mut self, payload: &str) {
-        let incoming_text: Result<SocketIncomingTextModel, _> = serde_json::from_str(payload);
+    fn handle_text(&mut self, payload: Value) {
+        let incoming_text: Result<SocketIncomingTextModel, _> = serde_json::from_value(payload);
 
-        let incoming_text = match incoming_text {
-            Ok(t)       => t,
-            Err(error)  => { log::error!("{:?}", error); return; }
-        };
+        if let Err(error) = incoming_text {
+            log::error!("Invalid payload structure: {:?}", error);
+            return;
+        }
+
+        let incoming_text = incoming_text.unwrap();
 
         let room_id = incoming_text.conversation_id.clone();
 
@@ -203,16 +221,36 @@ impl WsConn {
         });
     }
 
-    fn handle_typing(&mut self, raw: &str, room_id: &str) {
+    fn handle_typing(&mut self, payload: Value) {
+        let typing: Result<TypingPayload, _> =
+        serde_json::from_value(payload);
+
+        if let Err(error) = typing {
+            log::error!("Invalid payload structure: {:?}", error);
+            return;
+        }
+
+        let typing = typing.unwrap();
+
+
+        // Build outgoing envelope with sender injected
+        let msg = serde_json::json!({
+        "type": "typing",
+        "payload": {
+            "conversation_id": typing.conversation_id,
+            "user_id": typing.user_id,
+        }
+        }).to_string();
+
         self.lobby_addr.do_send(ClientActorMessage {
-            user_id: self.user_id.clone(),
-            room_id: room_id.to_string(),
-            msg:     raw.to_string(),
+            user_id: typing.user_id.clone(),
+            room_id: typing.conversation_id,
+            msg,
         });
     }
 
-    fn handle_call_signal(&mut self, payload: &str) {
-        let payload: IncomingSignal = match serde_json::from_str(payload) {
+    fn handle_call_signal(&mut self, payload: Value) {
+        let payload: IncomingSignal = match serde_json::from_value(payload) {
             Ok(p) => p,
             Err(error) => {
                 log::error!("Invalid call signal: {:?}", error);
@@ -221,7 +259,10 @@ impl WsConn {
         };
 
         let outgoing = self.build_outgoing_signal(&payload);
-        let message  = format!("%call_signal%::{}", outgoing);
+        let message = serde_json::json!({
+            "type": "call_signal",
+            "payload": outgoing,
+        }).to_string();
 
         match payload.r#type.as_str() {
             "offer" | "answer" | "ice_candidate" => {
