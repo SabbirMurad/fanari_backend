@@ -19,9 +19,6 @@ pub type Socket = Recipient<WsMessage>;
 pub struct Lobby {
     pub sessions: HashMap<String, Socket>,
     pub rooms: HashMap<String, HashSet<String>>,
-
-    // ✅ NEW — tracks active group calls per room
-    // room_id → set of user_ids currently in the call
     pub active_calls: HashMap<String, HashSet<String>>,
 }
 
@@ -47,7 +44,6 @@ impl Lobby {
         }
     }
 
-    // ✅ NEW — sends to everyone in a room except the sender
     fn broadcast_to_room(
         &self,
         message: &str,
@@ -63,7 +59,6 @@ impl Lobby {
         }
     }
 
-    // ✅ NEW — sends to everyone currently IN THE CALL except the sender
     fn broadcast_to_call(
         &self,
         message: &str,
@@ -78,109 +73,128 @@ impl Lobby {
             }
         }
     }
+
+    // Builds a JSON envelope string — single place for all outgoing messages
+    fn make_envelope(msg_type: &str, payload: serde_json::Value) -> String {
+        serde_json::json!({
+            "type": msg_type,
+            "payload": payload,
+        }).to_string()
+    }
 }
 
 impl Actor for Lobby {
-  type Context = Context<Self>;
+    type Context = Context<Self>;
 }
 
 
 impl Handler<Disconnect> for Lobby {
-  type Result = ();
+    type Result = ();
 
-  fn handle(&mut self, disconnect: Disconnect, _ctx: &mut Self::Context) -> Self::Result {
-    if self.sessions.remove(&disconnect.user_id).is_some() {
-      // autndm - all_user_that_need_disconnect_message
-      let mut autndm = Vec::new();
+    fn handle(&mut self, disconnect: Disconnect, _ctx: &mut Self::Context) -> Self::Result {
+        if self.sessions.remove(&disconnect.user_id).is_some() {
+            let mut autndm = Vec::new();
 
-      for room_id in &disconnect.rooms {
-        self.rooms.get(room_id)
-          .unwrap()
-          .iter()
-          .filter(|conn_id| *conn_id.to_owned() != disconnect.user_id)
-          .for_each(|user_id| {
-            let user = user_id.to_owned();
-            if !autndm.contains(&user) {
-              autndm.push(user);
+            for room_id in &disconnect.rooms {
+                self.rooms.get(room_id)
+                    .unwrap()
+                    .iter()
+                    .filter(|conn_id| *conn_id.to_owned() != disconnect.user_id)
+                    .for_each(|user_id| {
+                        let user = user_id.to_owned();
+                        if !autndm.contains(&user) {
+                            autndm.push(user);
+                        }
+                    });
+
+                if let Some(lobby) = self.rooms.get_mut(room_id) {
+                    if lobby.len() > 1 {
+                        lobby.remove(&disconnect.user_id);
+                    }
+                    else {
+                        self.rooms.remove(room_id);
+                    }
+                }
             }
-          });
-  
-        if let Some(lobby) = self.rooms.get_mut(room_id) {
-          if lobby.len() > 1 {
-            lobby.remove(&disconnect.user_id);
-          }
-          else {
-            self.rooms.remove(room_id);
-          }
-        }
-      }
 
-      for user_id in autndm {
-        self.send_message(&format!("%disconnect%::{}", disconnect.user_id), &user_id);
-      }
+            // ✅ envelope format
+            let message = Self::make_envelope("disconnect", serde_json::json!({
+                "user_id": disconnect.user_id,
+            }));
 
-      actix::spawn(async move {
-        let collection = MongoDB.connect().collection::<Model::Account::AccountStatus>("account_status");
-        let result = collection.update_one(
-          doc!{"uuid": &disconnect.user_id},
-          doc!{"$set":{
-            "online": false,
-            "last_seen": chrono::Utc::now().timestamp_millis(),
-          }},
-        ).await;
-        
-        if let Err(error) = result {
-          log::error!("{:?}", error);
+            for user_id in autndm {
+                self.send_message(&message, &user_id);
+            }
+
+            actix::spawn(async move {
+                let collection = MongoDB.connect()
+                    .collection::<Model::Account::AccountStatus>("account_status");
+                let result = collection.update_one(
+                    doc!{"uuid": &disconnect.user_id},
+                    doc!{"$set":{
+                        "online": false,
+                        "last_seen": chrono::Utc::now().timestamp_millis(),
+                    }},
+                ).await;
+
+                if let Err(error) = result {
+                    log::error!("{:?}", error);
+                }
+            });
         }
-      });
     }
-  }
 }
 
 impl Handler<Connect> for Lobby {
-  type Result = ();
+    type Result = ();
 
-  fn handle(&mut self, connect: Connect, _ctx: &mut Self::Context) -> Self::Result {
-    // autncm - all_user_that_need_connect_message
-    let mut autncm = Vec::new();
+    fn handle(&mut self, connect: Connect, _ctx: &mut Self::Context) -> Self::Result {
+        let mut autncm = Vec::new();
 
-    for room_id in &connect.rooms {
-      self.rooms.entry(room_id.clone()).or_insert_with(HashSet::new).insert(connect.user_id.clone());
-  
-      self.rooms.get(&room_id.clone())
-        .unwrap()
-        .iter()
-        .filter(|conn_id| *conn_id.to_owned() != connect.user_id)
-        .for_each(|conn_id| {
-          let user = conn_id.to_owned();
-          if !autncm.contains(&user) {
-            autncm.push(user);
-          }
+        for room_id in &connect.rooms {
+            self.rooms
+                .entry(room_id.clone())
+                .or_insert_with(HashSet::new)
+                .insert(connect.user_id.clone());
+
+            self.rooms.get(&room_id.clone())
+                .unwrap()
+                .iter()
+                .filter(|conn_id| *conn_id.to_owned() != connect.user_id)
+                .for_each(|conn_id| {
+                    let user = conn_id.to_owned();
+                    if !autncm.contains(&user) {
+                        autncm.push(user);
+                    }
+                });
+        }
+
+        // ✅ envelope format
+        let message = Self::make_envelope("connect", serde_json::json!({
+            "user_id": connect.user_id,
+        }));
+
+        for user_id in autncm {
+            self.send_message(&message, &user_id);
+        }
+
+        self.sessions.insert(connect.user_id.clone(), connect.addr);
+
+        actix::spawn(async move {
+            let collection = MongoDB.connect()
+                .collection::<Model::Account::AccountStatus>("account_status");
+            let result = collection.update_one(
+                doc!{"uuid": &connect.user_id},
+                doc!{"$set":{
+                    "online": true
+                }},
+            ).await;
+
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+            }
         });
     }
-
-    for user_id in autncm {
-      self.send_message(&format!("%connect%::{}", connect.user_id), &user_id);
-    }
-
-    self.sessions.insert(connect.user_id.clone(), connect.addr);
-
-    actix::spawn(async move {
-      let collection = MongoDB.connect().collection::<Model::Account::AccountStatus>("account_status");
-      let result = collection.update_one(
-        doc!{"uuid": &connect.user_id},
-        doc!{"$set":{
-          "online": true
-        }},
-      ).await;
-      
-      if let Err(error) = result {
-        log::error!("{:?}", error);
-      }
-    });
-  
-    // self.send_message(&format!("Your id is {}", connect.user_id), &connect.user_id);
-  }
 }
 
 
@@ -189,119 +203,122 @@ impl Handler<ClientActorMessage> for Lobby {
 
     fn handle(&mut self, msg: ClientActorMessage, _ctx: &mut Self::Context) -> Self::Result {
         self.rooms
-        .get(&msg.room_id)
-        .unwrap()
-        .iter()
-        .for_each(|conn_id| {
-            self.send_message(&msg.msg, conn_id)
-        });
+            .get(&msg.room_id)
+            .unwrap()
+            .iter()
+            .for_each(|conn_id| {
+                self.send_message(
+                    &serde_json::json!(msg.msg).to_string(),
+                    conn_id
+                )
+            });
     }
 }
 
-// ✅ NEW — Direct user-to-user (for Offer/Answer/IceCandidate in both 1-1 and group)
+
 impl Handler<DirectMessage> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: DirectMessage, _ctx: &mut Self::Context) -> Self::Result {
         if !self.sessions.contains_key(&msg.to_user_id) {
-            self.send_message(
-                &format!(
-                    "%call_signal%::{{\"type\":\"PeerOffline\",\"from\":\"{}\"}}",
-                    msg.to_user_id
-                ),
-                &msg.from_user_id,
-            );
+            // ✅ envelope format — no more raw format! string
+            let offline_msg = Self::make_envelope("call_signal", serde_json::json!({
+                "type": "peer_offline",
+                "from": msg.to_user_id,
+            }));
+            self.send_message(&offline_msg, &msg.from_user_id);
             return;
         }
-      
+
         self.send_message(&msg.msg, &msg.to_user_id);
     }
 }
 
-// ✅ NEW — Room-wide broadcast (for CallStart/CallJoin/CallLeave/VideoToggle)
+
 impl Handler<RoomSignalMessage> for Lobby {
-  type Result = ();
+    type Result = ();
 
-  fn handle(&mut self, msg: RoomSignalMessage, _ctx: &mut Self::Context) -> Self::Result {
-    // Parse just enough to know the signal type
-    let parsed: serde_json::Value = match serde_json::from_str(&msg.msg
-      .strip_prefix("%call_signal%::")
-      .unwrap_or(&msg.msg)
-    ) {
-      Ok(v) => v,
-      Err(e) => {
-        log::error!("Failed to parse RoomSignalMessage: {:?}", e);
-        return;
-      }
-    };
+    fn handle(&mut self, msg: RoomSignalMessage, _ctx: &mut Self::Context) -> Self::Result {
+        // ✅ msg.msg is already a valid envelope — parse it directly,
+        // no prefix stripping needed anymore
+        let envelope: serde_json::Value = match serde_json::from_str(&msg.msg) {
+            Ok(v) => v,
+            Err(e) => {
+                log::error!("Failed to parse RoomSignalMessage envelope: {:?}", e);
+                return;
+            }
+        };
 
-    let signal_type = parsed["type"].as_str().unwrap_or("");
+        // Signal type lives inside payload now, not at the top level
+        let signal_type = envelope["payload"]["type"].as_str().unwrap_or("");
 
-    match signal_type {
+        match signal_type {
+            "call_start" => {
+                self.active_calls
+                    .entry(msg.room_id.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(msg.from_user_id.clone());
 
-      // Someone is starting a brand new call in this room
-      "CallStart" => {
-        let call = self.active_calls
-          .entry(msg.room_id.clone())
-          .or_insert_with(HashSet::new);
-        call.insert(msg.from_user_id.clone());
+                self.broadcast_to_room(
+                    &msg.msg,
+                    &msg.room_id,
+                    &msg.from_user_id
+                );
+            }
 
-        // Notify everyone in the room (not just call participants yet)
-        self.broadcast_to_room(&msg.msg, &msg.room_id, &msg.from_user_id);
-      }
+            "call_join" => {
+                let existing_participants: Vec<String> = self.active_calls
+                    .get(&msg.room_id)
+                    .map(|set| set.iter().cloned().collect())
+                    .unwrap_or_default();
 
-      // Someone is joining an ongoing call
-      "CallJoin" => {
-        // Get current participants BEFORE adding the new joiner
-        // so we can tell the new joiner who's already there
-        let existing_participants: Vec<String> = self.active_calls
-          .get(&msg.room_id)
-          .map(|set| set.iter().cloned().collect())
-          .unwrap_or_default();
+                self.active_calls
+                    .entry(msg.room_id.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(msg.from_user_id.clone());
 
-        // Add joiner to the active call
-        self.active_calls
-          .entry(msg.room_id.clone())
-          .or_insert_with(HashSet::new)
-          .insert(msg.from_user_id.clone());
+                // ✅ envelope format
+                let participant_msg = Self::make_envelope("call_signal", serde_json::json!({
+                    "type": "call_participants",
+                    "from": "system",
+                    "participants": existing_participants,
+                    "room_id": msg.room_id,
+                }));
+                self.send_message(&participant_msg, &msg.from_user_id);
 
-        // Tell the new joiner who they need to create offers to
-        let participant_list = serde_json::json!({
-          "type": "CallParticipants",
-          "from": "system",
-          "participants": existing_participants,
-          "room_id": msg.room_id,
-        });
-        let participant_msg = format!("%call_signal%::{}", participant_list);
-        self.send_message(&participant_msg, &msg.from_user_id);
+                self.broadcast_to_call(
+                    &msg.msg,
+                    &msg.room_id,
+                    &msg.from_user_id
+                );
+            }
 
-        // Tell everyone already in the call that a new person joined
-        self.broadcast_to_call(&msg.msg, &msg.room_id, &msg.from_user_id);
-      }
+            "call_leave" => {
+                if let Some(call) = self.active_calls.get_mut(&msg.room_id) {
+                    call.remove(&msg.from_user_id);
+                    if call.is_empty() {
+                        self.active_calls.remove(&msg.room_id);
+                    }
+                }
 
-      // Someone is leaving the call (but staying in the chat room)
-      "CallLeave" => {
-        if let Some(call) = self.active_calls.get_mut(&msg.room_id) {
-          call.remove(&msg.from_user_id);
+                self.broadcast_to_call(
+                    &msg.msg,
+                    &msg.room_id,
+                    &msg.from_user_id
+                );
+            }
 
-          // If the call is now empty, clean it up
-          if call.is_empty() {
-            self.active_calls.remove(&msg.room_id);
-          }
+            "video_toggle" | "audio_toggle" => {
+                self.broadcast_to_call(
+                    &msg.msg,
+                    &msg.room_id,
+                    &msg.from_user_id
+                );
+            }
+
+            _ => {
+                log::warn!("Unknown RoomSignalMessage type: {}", signal_type);
+            }
         }
-
-        // Tell remaining participants to close their connection to this peer
-        self.broadcast_to_call(&msg.msg, &msg.room_id, &msg.from_user_id);
-      }
-
-      // Camera/mic toggle — only relevant to current call participants
-      "VideoToggle" | "AudioToggle" => {
-        self.broadcast_to_call(&msg.msg, &msg.room_id, &msg.from_user_id);
-      }
-
-      _ => {
-        log::warn!("Unknown RoomSignalMessage type: {}", signal_type);
-      }
     }
-  }
 }

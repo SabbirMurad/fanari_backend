@@ -1,4 +1,13 @@
 use actix::prelude::{Message, Recipient};
+use serde_json::Value;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WsEnvelope {
+  #[serde(rename = "type")]
+  pub msg_type: String,
+  pub payload: Value,  // stays as raw JSON until we know the type
+}
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -23,7 +32,7 @@ pub struct Disconnect {
 #[rtype(result = "()")]
 pub struct ClientActorMessage {
   pub user_id: String,
-  pub msg: String,
+  pub msg: WsEnvelope,
   pub room_id: String,
 }
 

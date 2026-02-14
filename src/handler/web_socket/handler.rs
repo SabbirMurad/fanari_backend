@@ -5,7 +5,16 @@ use actix_web_actors::ws;
 use std::time::{Duration, Instant};
 use crate::builtins::mongo::MongoDB;
 use serde::{Deserialize, Serialize};
-use super::WsMessage::{ClientActorMessage, Connect, Disconnect, WsMessage, DirectMessage, RoomSignalMessage};
+use crate::handler::web_socket::message::WsEnvelope;
+
+use super::WsMessage::{
+    ClientActorMessage,
+    Connect,
+    Disconnect,
+    WsMessage,
+    DirectMessage,
+    RoomSignalMessage
+};
 use serde_json::Value;
 
 use actix::{
@@ -29,13 +38,6 @@ use crate::Model::{
     AttachmentStruct,
     Mention
 };
-
-#[derive(Debug, Deserialize)]
-pub struct WsEnvelope {
-  #[serde(rename = "type")]
-  pub msg_type: String,
-  pub payload: Value,  // stays as raw JSON until we know the type
-}
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -88,6 +90,7 @@ struct IncomingSignal {
 struct TypingPayload {
     conversation_id: String,
     user_id: String,
+    name: String,
 }
 
 pub struct WsConn {
@@ -213,11 +216,15 @@ impl WsConn {
             save_message_in_database(outgoing_message_clone).await;
         });
 
-        let message = format!("%text%::{}", serde_json::to_string(&outgoing_message).unwrap());
+        
+
         self.lobby_addr.do_send(ClientActorMessage {
             user_id: self.user_id.clone(),
             room_id,
-            msg: message,
+            msg: WsEnvelope {
+                msg_type: "text".to_string(),
+                payload:  serde_json::to_value(outgoing_message).unwrap(),
+            },
         });
     }
 
@@ -232,20 +239,17 @@ impl WsConn {
 
         let typing = typing.unwrap();
 
-
-        // Build outgoing envelope with sender injected
-        let msg = serde_json::json!({
-        "type": "typing",
-        "payload": {
-            "conversation_id": typing.conversation_id,
-            "user_id": typing.user_id,
-        }
-        }).to_string();
-
         self.lobby_addr.do_send(ClientActorMessage {
             user_id: typing.user_id.clone(),
-            room_id: typing.conversation_id,
-            msg,
+            room_id: typing.conversation_id.clone(),
+            msg: WsEnvelope {
+                msg_type: "typing".to_string(),
+                payload:  serde_json::json!({
+                    "conversation_id": typing.conversation_id,
+                    "user_id": typing.user_id,
+                    "name": typing.name
+                }),
+            },
         });
     }
 
