@@ -263,10 +263,11 @@ impl WsConn {
         };
 
         let outgoing = self.build_outgoing_signal(&payload);
-        let message = serde_json::json!({
-            "type": "call_signal",
-            "payload": outgoing,
-        }).to_string();
+
+        let message = WsEnvelope {
+            msg_type: "call_signal".to_string(),
+            payload: outgoing,
+        };
 
         match payload.r#type.as_str() {
             "offer" | "answer" | "ice_candidate" => {
@@ -331,7 +332,12 @@ impl WsConn {
         outgoing
     }
 
-    fn send_direct_message(&self, to: Option<String>, signal_type: &str, message: String) {
+    fn send_direct_message(
+        &self,
+        to: Option<String>,
+        signal_type: &str,
+        message: WsEnvelope
+    ) {
         match to {
             None => log::error!("{} missing 'to' field", signal_type),
             Some(to_user_id) => self.lobby_addr.do_send(DirectMessage {
@@ -346,7 +352,7 @@ impl WsConn {
         &self,
         room_id: Option<String>,
         signal_type: &str,
-        message: String
+        message: WsEnvelope
     ) {
         match room_id {
             None => log::error!("{} missing 'room_id' field", signal_type),

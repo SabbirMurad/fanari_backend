@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use actix::prelude::{Actor, Context, Handler, Recipient};
 use mongodb::bson::doc;
-use crate::{builtins::mongo::MongoDB, Model};
+use crate::{Model, builtins::mongo::MongoDB, handler::web_socket::message::WsEnvelope};
 
 use super::message::{
     Connect,
@@ -33,8 +33,10 @@ impl Default for Lobby {
 }
 
 impl Lobby {
-    fn send_message(&self, message: &str, send_to: &str) {
+    fn send_message(&self, message: &WsEnvelope, send_to: &str) {
         if let Some(socket) = self.sessions.get(send_to) {
+            let message = serde_json::to_string(&message).unwrap();
+
             let _ = socket.do_send(WsMessage(message.to_string()));
         }
         else {
@@ -46,7 +48,7 @@ impl Lobby {
 
     fn broadcast_to_room(
         &self,
-        message: &str,
+        message: &WsEnvelope,
         room_id: &str,
         except_user_id: &str
     ) {
@@ -61,7 +63,7 @@ impl Lobby {
 
     fn broadcast_to_call(
         &self,
-        message: &str,
+        message: &WsEnvelope,
         room_id: &str,
         except_user_id: &str
     ) {
@@ -117,10 +119,12 @@ impl Handler<Disconnect> for Lobby {
                 }
             }
 
-            // ✅ envelope format
-            let message = Self::make_envelope("disconnect", serde_json::json!({
-                "user_id": disconnect.user_id,
-            }));
+            let message = WsEnvelope {
+                msg_type: "disconnect".to_string(),
+                payload: serde_json::json!({
+                    "user_id": disconnect.user_id,
+                })
+            };
 
             for user_id in autndm {
                 self.send_message(&message, &user_id);
@@ -169,10 +173,12 @@ impl Handler<Connect> for Lobby {
                 });
         }
 
-        // ✅ envelope format
-        let message = Self::make_envelope("connect", serde_json::json!({
-            "user_id": connect.user_id,
-        }));
+        let message = WsEnvelope {
+            msg_type: "connect".to_string(),
+            payload: serde_json::json!({
+                "user_id": connect.user_id,
+            })
+        };
 
         for user_id in autncm {
             self.send_message(&message, &user_id);
@@ -208,7 +214,7 @@ impl Handler<ClientActorMessage> for Lobby {
             .iter()
             .for_each(|conn_id| {
                 self.send_message(
-                    &serde_json::json!(msg.msg).to_string(),
+                    &msg.msg,
                     conn_id
                 )
             });
@@ -221,12 +227,15 @@ impl Handler<DirectMessage> for Lobby {
 
     fn handle(&mut self, msg: DirectMessage, _ctx: &mut Self::Context) -> Self::Result {
         if !self.sessions.contains_key(&msg.to_user_id) {
-            // ✅ envelope format — no more raw format! string
-            let offline_msg = Self::make_envelope("call_signal", serde_json::json!({
-                "type": "peer_offline",
-                "from": msg.to_user_id,
-            }));
-            self.send_message(&offline_msg, &msg.from_user_id);
+            let message = WsEnvelope {
+                msg_type: "call_signal".to_string(),
+                payload: serde_json::json!({
+                    "type": "peer_offline",
+                    "from": msg.to_user_id,
+                })
+            };
+
+            self.send_message(&message, &msg.from_user_id);
             return;
         }
 
@@ -239,18 +248,10 @@ impl Handler<RoomSignalMessage> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: RoomSignalMessage, _ctx: &mut Self::Context) -> Self::Result {
-        // ✅ msg.msg is already a valid envelope — parse it directly,
-        // no prefix stripping needed anymore
-        let envelope: serde_json::Value = match serde_json::from_str(&msg.msg) {
-            Ok(v) => v,
-            Err(e) => {
-                log::error!("Failed to parse RoomSignalMessage envelope: {:?}", e);
-                return;
-            }
-        };
+        let envelope = msg.msg.clone();
 
         // Signal type lives inside payload now, not at the top level
-        let signal_type = envelope["payload"]["type"].as_str().unwrap_or("");
+        let signal_type = envelope.payload["type"].as_str().unwrap_or("");
 
         match signal_type {
             "call_start" => {
@@ -277,13 +278,16 @@ impl Handler<RoomSignalMessage> for Lobby {
                     .or_insert_with(HashSet::new)
                     .insert(msg.from_user_id.clone());
 
-                // ✅ envelope format
-                let participant_msg = Self::make_envelope("call_signal", serde_json::json!({
-                    "type": "call_participants",
-                    "from": "system",
-                    "participants": existing_participants,
-                    "room_id": msg.room_id,
-                }));
+                let participant_msg = WsEnvelope {
+                    msg_type: "call_signal".to_string(),
+                    payload: serde_json::json!({
+                        "type": "call_participants",
+                        "from": "system",
+                        "participants": existing_participants,
+                        "room_id": msg.room_id,
+                    })
+                };
+
                 self.send_message(&participant_msg, &msg.from_user_id);
 
                 self.broadcast_to_call(
