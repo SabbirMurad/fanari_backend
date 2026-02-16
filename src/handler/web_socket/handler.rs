@@ -226,7 +226,7 @@ impl WsConn {
                 payload:  serde_json::to_value(outgoing_message).unwrap(),
             },
         });
-    }
+    } 
 
     fn handle_typing(&mut self, payload: Value) {
         let typing: Result<TypingPayload, _> =
