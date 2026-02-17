@@ -104,6 +104,12 @@ pub async fn task(
             Err(error) => return Ok(error),
         };
 
+        // Getting The video thumbnails
+        let video_thumbnails = match get_images(&db, post_core.videos.clone()).await {
+            Ok(images) => images,
+            Err(error) => return Ok(error),
+        };
+
         //Getting poll information
         let poll = match get_poll(&db, &post_core.poll.clone()).await {
             Ok(poll) => poll,
@@ -166,7 +172,7 @@ pub async fn task(
                 "images": &images,
                 "tags": &tags,
                 "mentions": &mentions,
-                "videos": &post_core.videos,
+                "videos": &video_thumbnails,
                 "audio": &post_core.audio,
                 "poll": &poll,
                 "created_at": &post_core.created_at,

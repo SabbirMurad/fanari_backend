@@ -76,6 +76,11 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
             .parse()
             .unwrap();
 
+        let created_uuid = Uuid::now_v7().to_string();
+        let uuid = text_fields
+            .get(&format!("uuid_{}", index))
+            .unwrap_or(&created_uuid);
+
         let blur_hash = text_fields
             .get(&format!("blur_hash_{}", index))
             .unwrap();
@@ -124,8 +129,6 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
         };
     
         // Creating the metadata in mongo
-        let uuid = Uuid::now_v7().to_string();
-
         let image_doc = ImageStruct {
             uuid: uuid.clone(),
             blur_hash: blur_hash.clone(),

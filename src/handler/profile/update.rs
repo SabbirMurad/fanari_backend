@@ -12,7 +12,6 @@ use crate::model::{
     AudioStruct,
     Mention,
     Post,
-    VideoStruct,
     ImageStruct,
     Account::{self, AccountRole},
     Poll
@@ -23,7 +22,7 @@ pub struct ReqBody {
     page_id: Option<String>,
     caption: Option<String>,
     images: Vec<String>,
-    videos: Vec<VideoStruct>,
+    videos: Vec<String>,
     audio: Option<AudioStruct>,
     mentions: Vec<Mention>,
     is_nsfw: bool,

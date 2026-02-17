@@ -33,7 +33,7 @@ pub struct PostCore {
 
     pub caption: Option<String>,
     pub images: Vec<String>,
-    pub videos: Vec<VideoStruct>,
+    pub videos: Vec<String>,
     pub audio: Option<AudioStruct>,
     pub poll: Option<String>,
 

@@ -4,7 +4,7 @@ use actix_web::{http::header, Error, web, HttpResponse};
 
 
 pub async fn task(video_id: web::Path<String>) -> Result<HttpResponse, Error> {
-  let path = format!("./uploaded_video/{video_id}/index.m3u8");
+  let path = format!("./upload/video/{video_id}/index.m3u8");
 
   let result = fs::read(path).await;
   if let Err(err) = result {

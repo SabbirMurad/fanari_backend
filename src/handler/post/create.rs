@@ -12,7 +12,6 @@ use crate::model::{
     AudioStruct,
     Mention,
     Post,
-    VideoStruct,
     ImageStruct,
     Poll
 };
@@ -22,7 +21,7 @@ pub struct ReqBody {
     page_id: Option<String>,
     caption: Option<String>,
     images: Vec<String>,
-    videos: Vec<VideoStruct>,
+    videos: Vec<String>,
     audio: Option<AudioStruct>,
     mentions: Vec<Mention>,
     is_nsfw: bool,
@@ -205,44 +204,91 @@ pub async fn task(
 
 
     // Getting The images
-    let filter = doc! {
-        "uuid": {
-            "$in": post_core.images.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
-        }
-    };
+    let mut images = Vec::new();
 
-    let collection = db.collection::<ImageStruct>("image");
-    let result = collection.find(filter).await;
+    if post_core.images.len() > 0 {
+        let filter = doc! {
+            "uuid": {
+                "$in": post_core.images.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
+            }
+        };
     
-    if let Err(error) = result {
-        log::error!("{:?}", error);
-        session.abort_transaction().await.ok().unwrap();
-        return Ok(Response::internal_server_error(&error.to_string()));
+        let collection = db.collection::<ImageStruct>("image");
+        let result = collection.find(filter).await;
+        
+        if let Err(error) = result {
+            log::error!("{:?}", error);
+            session.abort_transaction().await.ok().unwrap();
+            return Ok(Response::internal_server_error(&error.to_string()));
+        }
+    
+        let mut cursor = result.unwrap();
+        while let Some(result) = cursor.next().await {
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                session.abort_transaction().await.ok().unwrap();
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+            
+            let image = result.unwrap();
+    
+            let result = collection.update_one(
+                doc!{"uuid": &image.uuid},
+                doc!{"$set":{"temporary": false}},
+            ).await;
+    
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                session.abort_transaction().await.ok().unwrap();
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+            
+            images.push(image);
+        }        
     }
 
-    let mut cursor = result.unwrap();
-    let mut images = Vec::new();
-    while let Some(result) = cursor.next().await {
+    //Getting The videos Thumbnails
+    let mut video_images = Vec::new();
+
+    if post_core.videos.len() > 0 {
+        let filter = doc! {
+            "uuid": {
+                "$in": post_core.videos.iter().map(|s| Bson::String(s.clone())).collect::<Vec<Bson>> ()
+            }
+        };
+    
+        let collection = db.collection::<ImageStruct>("image");
+        let result = collection.find(filter).await;
+        
         if let Err(error) = result {
             log::error!("{:?}", error);
             session.abort_transaction().await.ok().unwrap();
             return Ok(Response::internal_server_error(&error.to_string()));
         }
-        
-        let image = result.unwrap();
-
-        let result = collection.update_one(
-            doc!{"uuid": &image.uuid},
-            doc!{"$set":{"temporary": false}},
-        ).await;
-
-        if let Err(error) = result {
-            log::error!("{:?}", error);
-            session.abort_transaction().await.ok().unwrap();
-            return Ok(Response::internal_server_error(&error.to_string()));
-        }
-        
-        images.push(image);
+    
+        let mut cursor = result.unwrap();
+        while let Some(result) = cursor.next().await {
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                session.abort_transaction().await.ok().unwrap();
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+            
+            let image = result.unwrap();
+    
+            let result = collection.update_one(
+                doc!{"uuid": &image.uuid},
+                doc!{"$set":{"temporary": false}},
+            ).await;
+    
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                session.abort_transaction().await.ok().unwrap();
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+            
+            video_images.push(image);
+        }        
     }
 
     /* DATABASE ACID COMMIT */
@@ -260,7 +306,7 @@ pub async fn task(
                 "owner_id": &post_core.owner,
                 "caption": &post_core.caption,
                 "images": &images,
-                "videos": &post_core.videos,
+                "videos": &video_images,
                 "audio": &post_core.audio,
                 "mentions": &mentions,
                 "tags": req_body.tags.clone(),
