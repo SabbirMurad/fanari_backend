@@ -272,6 +272,29 @@ async fn main() -> io::Result<()> {
                 res
             })
         })
+        .service(
+            StaticResource::Files::new("/upload/", "upload/")
+            .prefer_utf8(true)
+            .use_last_modified(true)
+        )
+        .wrap_fn(|req, srv| {
+            /* Custom CACHE_CONTROL for Resources */
+            srv.call(req).map(|mut res| {
+                if let Ok(response) = &mut res {
+                    let request = response.request();
+                    let uri = request.uri().to_string();
+                    if uri.contains("/upload/") {
+                        response.headers_mut().insert(
+                            http::header::CACHE_CONTROL,
+                            http::header::HeaderValue::from_static(
+                                "public, max-age=86400, must-revalidate"
+                            )
+                        );
+                    }
+                }
+                res
+            })
+        })
         .configure(Routes::WebSocket::router)
         .configure(Routes::Video::router)
         .configure(Routes::Conversation::router)

@@ -16,5 +16,3 @@ If you don't know about the project run the code below to read the full document
 ```bash
 mkdocs serve
 ```
-
-systemfd --no-pid -s http::8080 -- \cargo watch -w src -w Cargo.toml -x run
