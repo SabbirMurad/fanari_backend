@@ -1,20 +1,35 @@
+use serde::{Deserialize, Serialize};
 use tokio::fs;
-use crate::utils::response::Response;
+use crate::{handler::video::segment, utils::response::Response};
 use actix_web::{http::header, Error, web, HttpResponse};
 
 
-pub async fn task(video_id: web::Path<String>) -> Result<HttpResponse, Error> {
-  let path = format!("./upload/video/{video_id}/index.m3u8");
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PathParams { video_id: String, segment_name: String }
 
-  let result = fs::read(path).await;
-  if let Err(err) = result {
-    log::error!("{:?}", err);
-    return Ok(Response::not_found("Video not found"));
-  }
+pub async fn task(params: web::Path<PathParams>) -> Result<HttpResponse, Error> {
+    let PathParams { video_id, segment_name } = params.into_inner();
+    println!(" segment {}", segment_name);
 
-  let file = result.unwrap();
-  Ok(HttpResponse::Ok()
-    .insert_header((header::CONTENT_TYPE, "application/x-mpegURL"))
-    .body(file)
-  )
+    let file_path = format!("./upload/video/{video_id}/{segment_name}");
+
+    let result = fs::read(file_path).await;
+
+    if let Err(_) = result {
+        return Ok(Response::not_found("File not found"));
+    }
+
+    let file = result.unwrap();
+
+    let content_type = if segment_name.ends_with(".m3u8") {
+        "application/x-mpegURL"
+    } else if segment_name.ends_with(".ts") {
+        "video/mp2t"
+    } else {
+        "application/octet-stream"
+    };
+
+    Ok(HttpResponse::Ok()
+        .insert_header((header::CONTENT_TYPE, content_type))
+        .body(file))
 }

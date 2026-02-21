@@ -2,7 +2,7 @@ use uuid::Uuid;
 use futures::TryStreamExt;
 use actix_multipart::Multipart;
 use std::{fs, process::Command};
-use crate::{builtins::mongo::MongoDB, model::VideoStruct, utils::response::Response};
+use crate::utils::response::Response;
 use tokio::{fs::{create_dir_all, File}, io::AsyncWriteExt};
 use crate::Middleware::Auth::{require_access, AccessRequirement};
 use actix_web::{Error, HttpResponse, HttpRequest, http::header::CONTENT_LENGTH};
@@ -84,7 +84,7 @@ pub async fn task(mut payload: Multipart, req: HttpRequest) -> Result<HttpRespon
             "-i", &video_path,
             "-codec:v", "libx264",
             "-codec:a", "aac",
-            "-hls_time", "6",
+            "-hls_time", "4",
             "-hls_playlist_type", "vod",
             "-hls_segment_filename", &segment_path,
             "-start_number", "0", &hls_path

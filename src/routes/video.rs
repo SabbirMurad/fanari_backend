@@ -22,6 +22,10 @@ pub fn router(cfg: &mut web::ServiceConfig) {
         )
         .route(
             "/segment/{video_id}",
+            web::get().to(Handler::Video::Index::task)
+        )
+        .route(
+            "/segment/{video_id}/{segment_name}",
             web::get().to(Handler::Video::Segment::task)
         )
     );
