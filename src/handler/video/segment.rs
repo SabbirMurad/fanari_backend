@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use tokio::fs;
-use crate::{handler::video::segment, utils::response::Response};
+use serde::{Deserialize, Serialize};
+use crate::utils::response::Response;
 use actix_web::{http::header, Error, web, HttpResponse};
 
 

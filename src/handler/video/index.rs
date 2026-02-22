@@ -18,4 +18,4 @@ pub async fn task(video_id: web::Path<String>) -> Result<HttpResponse, Error> {
     .insert_header((header::CONTENT_TYPE, "application/vnd.apple.mpegurl"))
     .body(file)
   )
-}
+} 
