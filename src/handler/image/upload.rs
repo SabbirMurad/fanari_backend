@@ -65,10 +65,7 @@ pub async fn task(mut payload: Multipart) -> Result<HttpResponse, Error> {
     let created_at = Utc::now().timestamp_millis();
     let sqlite_conn = sqlite::connect(sqlite::DBF::IMG).unwrap();
 
-    println!("{} images to process", images_data.len());
-
     for (field_name, bytes) in images_data.iter() {
-        println!("{}", field_name);
         let index: usize = field_name
             .split('_')
             .nth(1)

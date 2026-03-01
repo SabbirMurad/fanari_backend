@@ -8,8 +8,6 @@ use actix_web::{web, Error, HttpResponse};
 pub async fn task(image_ids: web::Json<Vec<String>>) -> Result<HttpResponse, Error> {
     let image_ids = image_ids.clone();
 
-    println!("{} images requested", image_ids.len());
-
     let db = MongoDB.connect();
     let collection = db.collection::<ImageStruct>("image");
 
@@ -35,8 +33,6 @@ pub async fn task(image_ids: web::Json<Vec<String>>) -> Result<HttpResponse, Err
 
         images.push(image_data);
     }
-
-    println!("{} images found", images.len());
 
     Ok(
         HttpResponse::Ok()
