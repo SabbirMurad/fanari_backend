@@ -57,8 +57,6 @@ pub async fn task(
     //Creating Conversation member 1
     let conversation_participant = Conversation::ConversationParticipant {
         conversation_id: conversation_id.clone(),
-        is_favorite: false,
-        is_muted: false,
         joined_at: now,
         last_message_read_id: None,
         role: Conversation::ConversationRole::Member,
@@ -79,8 +77,6 @@ pub async fn task(
     //Creating Conversation member 2
     let conversation_participant = Conversation::ConversationParticipant {
         conversation_id: conversation_id.clone(),
-        is_favorite: false,
-        is_muted: false,
         joined_at: now,
         last_message_read_id: None,
         role: Conversation::ConversationRole::Member,

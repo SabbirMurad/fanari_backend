@@ -13,6 +13,10 @@ pub fn router(cfg: &mut web::ServiceConfig) {
           "/myself/details",
           web::get().to(Handler::Profile::Myself::task)
         )
+        .route(
+          "/search",
+          web::get().to(Handler::Profile::Search::task)
+        )
         //Update
         .route(
           "",

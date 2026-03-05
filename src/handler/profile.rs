@@ -6,3 +6,6 @@ pub use list as List;
 
 pub mod update;
 pub use update as Update;
+
+pub mod search;
+pub use search as Search;

@@ -19,5 +19,15 @@ pub fn router(cfg: &mut web::ServiceConfig) {
           "/list",
           web::get().to(Handler::Conversation::List::task)
         )
+        //Favorite Conversation
+        .route(
+          "/favorite",
+          web::patch().to(Handler::Conversation::Favorite::task)
+        )
+        //Mute Conversation
+        .route(
+          "/mute",
+          web::patch().to(Handler::Conversation::Mute::task)
+        )
     );
 }

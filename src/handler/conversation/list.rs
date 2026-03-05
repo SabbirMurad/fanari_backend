@@ -89,9 +89,46 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
         let conversation_core = conversation_core.unwrap();
 
+        // Check if this conversation is favorited by the current user
+        let fav_collection = db.collection::<Conversation::ConversationFavorite>("conversation_favorite");
+        let fav_result = fav_collection.find_one(doc!{
+            "conversation_id": &conversation_core.uuid,
+            "user_id": &user_id
+        }).await;
+
+        let is_favorite = match fav_result {
+            Ok(option) => option.is_some(),
+            Err(error) => {
+                log::error!("{:?}", error);
+                false
+            }
+        };
+
+        // Check if this conversation is muted by the current user
+        let mute_collection = db.collection::<Conversation::ConversationMuted>("conversation_muted");
+        let mute_result = mute_collection.find_one(doc!{
+            "conversation_id": &conversation_core.uuid,
+            "user_id": &user_id
+        }).await;
+
+        let is_muted = match mute_result {
+            Ok(option) => option.is_some(),
+            Err(error) => {
+                log::error!("{:?}", error);
+                false
+            }
+        };
+
+        let common_metadata = json!({
+            "is_favorite": is_favorite,
+            "is_muted": is_muted
+        });
+
         match conversation_core.r#type {
             Conversation::ConversationType::Group => {
-                let collection = db.collection::<Conversation::GroupConversationMetadata>("group_conversation_metadata");
+                println!("{:?}", conversation_core.uuid);
+
+                let collection = db.collection::<Conversation::GroupConversationMetadata>("conversation_group_metadata");
 
                 let result = collection.find_one(doc!{
                     "conversation_id": &conversation_core.uuid
@@ -106,7 +143,9 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 let option = result.unwrap();
                 if let None = option {
-                    return Ok(Response::not_found("Group conversation metadata not found"));
+                    return Ok(Response::not_found(
+                        "Group conversation metadata not found"
+                    ));
                 }
 
                 let group_conversation_metadata = option.unwrap();
@@ -140,6 +179,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 response.push(json!({
                     "core": conversation_core,
+                    "common_metadata": common_metadata,
                     "group_metadata": json!({
                         "name": group_conversation_metadata.name,
                         "image": image,
@@ -241,6 +281,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 response.push(json!({
                     "core": conversation_core,
+                    "common_metadata": common_metadata,
                     "single_metadata": json!({
                         "user_id": account_profile.uuid,
                         "first_name": account_profile.first_name,

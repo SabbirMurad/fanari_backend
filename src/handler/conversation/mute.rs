@@ -42,9 +42,9 @@ pub async fn task(
         return Ok(Response::not_found("conversation not found"));
     }
 
-    // Check if already favorited
-    let favorite_collection = db.collection::<Conversation::ConversationFavorite>("conversation_favorite");
-    let result = favorite_collection.find_one(doc!{
+    // Check if already muted
+    let mute_collection = db.collection::<Conversation::ConversationMuted>("conversation_muted");
+    let result = mute_collection.find_one(doc!{
         "conversation_id": &req_body.conversation_id,
         "user_id": &user_id
     }).await;
@@ -57,8 +57,8 @@ pub async fn task(
     let existing = result.unwrap();
 
     if existing.is_some() {
-        // Already favorited — remove it
-        let result = favorite_collection.delete_one(doc!{
+        // Already muted — unmute it
+        let result = mute_collection.delete_one(doc!{
             "conversation_id": &req_body.conversation_id,
             "user_id": &user_id
         }).await;
@@ -73,19 +73,19 @@ pub async fn task(
             .content_type("application/json")
             .json(json!({
                 "conversation_id": &req_body.conversation_id,
-                "is_favorite": false
+                "is_muted": false
             }))
         );
     }
 
-    // Not favorited — add it
-    let favorite = Conversation::ConversationFavorite {
+    // Not muted — mute it
+    let muted = Conversation::ConversationMuted {
         conversation_id: req_body.conversation_id.clone(),
         user_id: user_id.clone(),
         created_at: Utc::now().timestamp_millis(),
     };
 
-    let result = favorite_collection.insert_one(&favorite).await;
+    let result = mute_collection.insert_one(&muted).await;
 
     if let Err(error) = result {
         log::error!("{:?}", error);
@@ -97,7 +97,7 @@ pub async fn task(
         .content_type("application/json")
         .json(json!({
             "conversation_id": &req_body.conversation_id,
-            "is_favorite": true
+            "is_muted": true
         }))
     )
 }

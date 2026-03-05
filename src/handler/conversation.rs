@@ -10,5 +10,8 @@ pub use list as List;
 pub mod favorite;
 pub use favorite as Favorite;
 
+pub mod mute;
+pub use mute as Mute;
+
 pub mod delete;
 pub use delete as Delete;

@@ -77,8 +77,6 @@ pub async fn task(
     //Creating Conversation owner
     let conversation_details = Conversation::ConversationParticipant {
         conversation_id: conversation_id.clone(),
-        is_favorite: false,
-        is_muted: false,
         joined_at: now,
         last_message_read_id: None,
         role: Conversation::ConversationRole::Owner,
@@ -100,8 +98,6 @@ pub async fn task(
     for member in &req_body.members {
         let conversation_details = Conversation::ConversationParticipant {
             conversation_id: conversation_id.clone(),
-            is_favorite: false,
-            is_muted: false,
             joined_at: now,
             last_message_read_id: None,
             role: Conversation::ConversationRole::Member,
@@ -150,7 +146,7 @@ pub async fn task(
         .content_type("application/json")
         .json(json!({
             "core": serde_json::to_value(&conversation).unwrap(),
-            "group_payload": serde_json::to_value(&conversation_details)
+            "group_metadata": serde_json::to_value(&conversation_details)
             .unwrap(),
         }))
     )

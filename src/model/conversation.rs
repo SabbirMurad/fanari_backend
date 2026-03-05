@@ -17,6 +17,14 @@ pub struct ConversationFavorite {
     pub created_at: i64,
 }
 
+//conversation_muted
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConversationMuted {
+    pub conversation_id: String,
+    pub user_id: String,
+    pub created_at: i64,
+}
+
 //conversation_core
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConversationCore {
@@ -43,8 +51,6 @@ pub struct ConversationParticipant {
     pub role: ConversationRole,
     pub joined_at: i64,
     pub last_message_read_id: Option<String>,
-    pub is_favorite: bool,
-    pub is_muted: bool,
 }
 
 //group_conversation_metadata
