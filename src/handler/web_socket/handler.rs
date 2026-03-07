@@ -34,7 +34,6 @@ use actix::{
 use crate::Model::{
     Conversation,
     AudioStruct,
-    VideoStruct,
     AttachmentStruct,
     Mention
 };
@@ -48,7 +47,7 @@ pub struct SocketIncomingTextModel {
     text: Option<String>,
     images: Option<Vec<String>>,
     audio: Option<AudioStruct>,
-    video: Option<VideoStruct>,
+    video: Option<String>,
     attachment: Option<AttachmentStruct>,
     r#type: Conversation::TextType,
     reply_to: Option<String>,
@@ -65,7 +64,7 @@ pub struct SocketOutgoingTextModel {
     mentions: Option<Vec<Mention>>,
     images: Option<Vec<String>>,
     audio: Option<AudioStruct>,
-    video: Option<VideoStruct>,
+    video: Option<String>,
     attachment: Option<AttachmentStruct>,
     emoji: Option<String>,
     r#type: Conversation::TextType,
@@ -446,10 +445,7 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
             None => None,
             Some(audio) => Some(audio.uuid.clone()),
         },
-        video: match message.video {
-            None => None,
-            Some(video) => Some(video.uuid.clone()),
-        },
+        video: message.video.clone(),
         images: message.images.clone(),
         attachment: match message.attachment {
             None => None,

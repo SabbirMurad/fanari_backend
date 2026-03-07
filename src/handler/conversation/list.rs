@@ -126,8 +126,6 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
         match conversation_core.r#type {
             Conversation::ConversationType::Group => {
-                println!("{:?}", conversation_core.uuid);
-
                 let collection = db.collection::<Conversation::GroupConversationMetadata>("conversation_group_metadata");
 
                 let result = collection.find_one(doc!{
