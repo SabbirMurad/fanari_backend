@@ -388,15 +388,72 @@ async fn get_last_text(last_msg_id: &str) -> Result<Value, HttpResponse> {
         seen_by.push(read.user_id);
     }
 
+    let mut images: Option<Vec<ImageStruct>> = None;
+
+    if !text_content.images.is_none() {
+        let mut images_some = Vec::new();
+
+        for image in text_content.images.unwrap().iter() {
+            let collection = db.collection::<ImageStruct>("image");
+    
+            let result = collection.find_one(doc!{
+                "uuid": image
+            }).await;
+    
+            if let Err(error) = result {
+                return Err(Response::internal_server_error(
+                    &error.to_string()
+                ));
+            }
+    
+            let option = result.unwrap();
+            if let None = option {
+                return Err(Response::not_found(
+                    "Image not found"
+                ));
+            }
+    
+            let image = option.unwrap();
+    
+            images_some.push(image);
+        }
+
+        images = Some(images_some);
+    }
+
+    let mut video = None;
+    if !text_content.video.is_none() {
+        let collection = db.collection::<ImageStruct>("image");
+
+        let result = collection.find_one(doc!{
+            "uuid": text_content.video.unwrap()
+        }).await;
+
+        if let Err(error) = result {
+            return Err(Response::internal_server_error(
+                &error.to_string()
+            ));
+        }
+
+        let option = result.unwrap();
+        if let None = option {
+            return Err(Response::not_found(
+                "Video not found"
+            ));
+        }
+
+        video = Some(option.unwrap());
+    }
+
     Ok(json!({
         "uuid": text_content.message_id,
         "owner": text_core.owner,
         "conversation_id": text_core.conversation_id,
         "text": text_content.text,
         "type": text_core.r#type,
-        "images": text_content.images,
+        "images": images,
         "audio": text_content.audio,
-        "video": text_content.video,
+        "video": video,
         "attachment": text_content.attachment,
         "seen_by": seen_by,
         "created_at": text_core.created_at,
