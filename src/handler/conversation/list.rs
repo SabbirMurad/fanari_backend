@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use serde_json::json;
+use serde_json::{json, Value};
 use mongodb::bson::doc;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
@@ -119,6 +119,20 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
             }
         };
 
+        // Fetch last message content
+        let last_text = match conversation_core.last_message_id.clone() {
+            Some(last_msg_id) => {
+                let result = get_last_text(&last_msg_id).await;
+                match result {
+                    Ok(text) => Some(text),
+                    Err(error) => {
+                        return Ok(error);
+                    }
+                }
+            },
+            None => None
+        };
+
         let common_metadata = json!({
             "is_favorite": is_favorite,
             "is_muted": is_muted
@@ -178,6 +192,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
                 response.push(json!({
                     "core": conversation_core,
                     "common_metadata": common_metadata,
+                    "last_text": last_text,
                     "group_metadata": json!({
                         "name": group_conversation_metadata.name,
                         "image": image,
@@ -280,6 +295,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
                 response.push(json!({
                     "core": conversation_core,
                     "common_metadata": common_metadata,
+                    "last_text": last_text,
                     "single_metadata": json!({
                         "user_id": account_profile.uuid,
                         "first_name": account_profile.first_name,
@@ -298,4 +314,91 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
         .content_type("application/json")
         .json(response)
     )
+}
+
+async fn get_last_text(last_msg_id: &str) -> Result<Value, HttpResponse> {
+    let db = MongoDB.connect();
+
+    let collection = db.collection::<Conversation::MessageContent>("message_content");
+
+    let result = collection.find_one(doc!{
+        "message_id": last_msg_id
+    }).await;
+
+    if let Err(error) = result {
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found(
+            "Message content not found"
+        ));
+    }
+
+    let text_content = option.unwrap();
+
+    let collection = db.collection::<Conversation::MessageCore>("message_core");
+
+    let result = collection.find_one(doc!{
+        "uuid": last_msg_id
+    }).await;
+
+    if let Err(error) = result {
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found(
+            "Message content not found"
+        ));
+    }
+
+    let text_core = option.unwrap();
+
+
+    let collection = db.collection::<Conversation::MessageRead>("message_read");
+
+    let result = collection.find(doc!{
+        "message_id": last_msg_id
+    }).await;
+
+    if let Err(error) = result {
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let mut seen_by = Vec::new();
+    let mut cursor = result.unwrap();
+    while let Some(result) = cursor.next().await {
+        if let Err(error) = result {
+            return Err(Response::internal_server_error(
+                &error.to_string()
+            ));
+        }
+
+        let read = result.unwrap();
+
+        seen_by.push(read.user_id);
+    }
+
+    Ok(json!({
+        "uuid": text_content.message_id,
+        "owner": text_core.owner,
+        "conversation_id": text_core.conversation_id,
+        "text": text_content.text,
+        "type": text_core.r#type,
+        "images": text_content.images,
+        "audio": text_content.audio,
+        "video": text_content.video,
+        "attachment": text_content.attachment,
+        "seen_by": seen_by,
+        "created_at": text_core.created_at,
+    }))
 }

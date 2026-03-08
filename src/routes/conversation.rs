@@ -19,6 +19,11 @@ pub fn router(cfg: &mut web::ServiceConfig) {
           "/list",
           web::get().to(Handler::Conversation::List::task)
         )
+        //List Texts in a Conversation
+        .route(
+          "/text/list",
+          web::get().to(Handler::Conversation::TextList::task)
+        )
         //Favorite Conversation
         .route(
           "/favorite",

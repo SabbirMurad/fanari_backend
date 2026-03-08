@@ -128,6 +128,11 @@ pub struct VideoStruct {
 pub struct AudioStruct {
     pub uuid: String,
     pub length: i64,
+    pub size: usize,
+    pub used_at: AssetUsedAt,
+    pub created_at: i64,
+    pub temporary: bool,
+    pub deleted: bool
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
