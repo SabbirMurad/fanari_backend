@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use chrono::Utc;
 use super::Lobby::Lobby;
+use mongodb::bson::doc;
 use actix_web_actors::ws;
 use std::time::{Duration, Instant};
 use crate::builtins::mongo::MongoDB;
@@ -415,6 +416,21 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
     let (db, mut session) = MongoDB.connect_acid().await;
     if let Err(error) = session.start_transaction().await {
         log::error!("{:?}", error);
+        return;
+    }
+
+    let collection = db.collection::<Conversation::ConversationCore>("conversation_core");
+    let result = collection.update_one(
+        doc!{"uuid": message.conversation_id.clone()},
+        doc!{"$set": {
+            "last_message_id": message.uuid.clone(),
+            "last_message_at": message.created_at.clone(),
+        }},
+    ).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        session.abort_transaction().await.ok().unwrap();
         return;
     }
   

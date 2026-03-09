@@ -26,6 +26,16 @@ pub struct ParticipantQuery {
     user_id: String,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MessageUuidQuery {
+    uuid: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MessageReadQuery {
+    message_id: String,
+}
+
 pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
@@ -138,6 +148,40 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
             "is_muted": is_muted
         });
 
+        // Count unread messages (messages from others that user hasn't read)
+        let msg_collection = db.collection::<MessageUuidQuery>("message_core");
+        let msg_cursor = msg_collection.find(doc!{
+            "conversation_id": &conversation_core.uuid,
+            "owner": { "$ne": &user_id }
+        }).await;
+
+        let unread_count = match msg_cursor {
+            Ok(mut cursor) => {
+                let mut other_msg_ids: Vec<String> = Vec::new();
+                while let Some(msg) = cursor.next().await {
+                    if let Ok(msg) = msg {
+                        other_msg_ids.push(msg.uuid);
+                    }
+                }
+
+                if other_msg_ids.is_empty() {
+                    0
+                } else {
+                    let read_collection = db.collection::<MessageReadQuery>("message_read");
+                    let read_count = read_collection.count_documents(doc!{
+                        "message_id": { "$in": &other_msg_ids },
+                        "user_id": &user_id
+                    }).await.unwrap_or(0);
+
+                    (other_msg_ids.len() as u64) - read_count
+                }
+            },
+            Err(error) => {
+                log::error!("{:?}", error);
+                return Ok(Response::internal_server_error(&error.to_string()));
+            }
+        };
+
         match conversation_core.r#type {
             Conversation::ConversationType::Group => {
                 let collection = db.collection::<Conversation::GroupConversationMetadata>("conversation_group_metadata");
@@ -193,6 +237,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
                     "core": conversation_core,
                     "common_metadata": common_metadata,
                     "last_text": last_text,
+                    "unread_count": unread_count,
                     "group_metadata": json!({
                         "name": group_conversation_metadata.name,
                         "image": image,
@@ -296,6 +341,7 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
                     "core": conversation_core,
                     "common_metadata": common_metadata,
                     "last_text": last_text,
+                    "unread_count": unread_count,
                     "single_metadata": json!({
                         "user_id": account_profile.uuid,
                         "first_name": account_profile.first_name,
