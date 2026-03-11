@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use actix::prelude::{Actor, Context, Handler, Recipient};
 use mongodb::bson::doc;
-use crate::{Model, builtins::mongo::MongoDB, handler::web_socket::message::WsEnvelope};
+use crate::{Model, builtins::mongo::MongoDB, handler::web_socket::message::{WsEnvelope, WsEnvelopeType}};
 
 use super::message::{
     Connect,
@@ -120,7 +120,7 @@ impl Handler<Disconnect> for Lobby {
             }
 
             let message = WsEnvelope {
-                msg_type: "disconnect".to_string(),
+                msg_type: WsEnvelopeType::disconnect,
                 payload: serde_json::json!({
                     "user_id": disconnect.user_id,
                 })
@@ -174,7 +174,7 @@ impl Handler<Connect> for Lobby {
         }
 
         let message = WsEnvelope {
-            msg_type: "connect".to_string(),
+            msg_type: WsEnvelopeType::connect,
             payload: serde_json::json!({
                 "user_id": connect.user_id,
             })
@@ -228,7 +228,7 @@ impl Handler<DirectMessage> for Lobby {
     fn handle(&mut self, msg: DirectMessage, _ctx: &mut Self::Context) -> Self::Result {
         if !self.sessions.contains_key(&msg.to_user_id) {
             let message = WsEnvelope {
-                msg_type: "call_signal".to_string(),
+                msg_type: WsEnvelopeType::call_signal,
                 payload: serde_json::json!({
                     "type": "peer_offline",
                     "from": msg.to_user_id,
@@ -279,7 +279,7 @@ impl Handler<RoomSignalMessage> for Lobby {
                     .insert(msg.from_user_id.clone());
 
                 let participant_msg = WsEnvelope {
-                    msg_type: "call_signal".to_string(),
+                    msg_type: WsEnvelopeType::call_signal,
                     payload: serde_json::json!({
                         "type": "call_participants",
                         "from": "system",

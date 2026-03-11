@@ -3,9 +3,25 @@ use serde_json::Value;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum WsEnvelopeType {
+  text,
+  typing,
+  connect,
+  disconnect,
+  call_signal,
+  message_seen,
+}
+
+impl std::fmt::Display for WsEnvelopeType {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt,"{:?}", self)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct WsEnvelope {
   #[serde(rename = "type")]
-  pub msg_type: String,
+  pub msg_type: WsEnvelopeType,
   pub payload: Value,  // stays as raw JSON until we know the type
 }
 

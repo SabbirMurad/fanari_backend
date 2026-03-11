@@ -1,12 +1,13 @@
+use rand::rand_core::le;
 use uuid::Uuid;
 use chrono::Utc;
 use super::Lobby::Lobby;
 use mongodb::bson::doc;
 use actix_web_actors::ws;
 use std::time::{Duration, Instant};
-use crate::builtins::mongo::MongoDB;
+use crate::{builtins::mongo::MongoDB, model::conversation::MessageRead};
 use serde::{Deserialize, Serialize};
-use crate::handler::web_socket::message::WsEnvelope;
+use crate::handler::web_socket::message::{WsEnvelope, WsEnvelopeType};
 
 use super::WsMessage::{
     ClientActorMessage,
@@ -93,6 +94,12 @@ struct TypingPayload {
     name: String,
 }
 
+#[derive(Deserialize, Clone)]
+struct MessageSeenPayload {
+    conversation_id: String,
+    text_ids: Vec<String>,
+}
+
 pub struct WsConn {
     rooms: Vec<String>,
     lobby_addr: Addr<Lobby>,
@@ -173,10 +180,15 @@ impl WsConn {
 
         let envelope = envelope.unwrap();
 
-        match envelope.msg_type.as_str() {
-            "text"        => self.handle_text(envelope.payload),
-            "typing"      => self.handle_typing(envelope.payload),
-            "call_signal" => self.handle_call_signal(envelope.payload),
+        match envelope.msg_type {
+            WsEnvelopeType::text => self.handle_text(envelope.payload),
+            WsEnvelopeType::typing => self.handle_typing(envelope.payload),
+            WsEnvelopeType::message_seen => self.handle_message_seen(
+                envelope.payload
+            ),
+            WsEnvelopeType::call_signal => self.handle_call_signal(
+                envelope.payload
+            ),
             _   => log::warn!("Unknown message prefix: {}", envelope.msg_type),
         }
     }
@@ -222,7 +234,7 @@ impl WsConn {
             user_id: self.user_id.clone(),
             room_id,
             msg: WsEnvelope {
-                msg_type: "text".to_string(),
+                msg_type: WsEnvelopeType::text,
                 payload:  serde_json::to_value(outgoing_message).unwrap(),
             },
         });
@@ -243,11 +255,42 @@ impl WsConn {
             user_id: typing.user_id.clone(),
             room_id: typing.conversation_id.clone(),
             msg: WsEnvelope {
-                msg_type: "typing".to_string(),
+                msg_type: WsEnvelopeType::typing,
                 payload:  serde_json::json!({
                     "conversation_id": typing.conversation_id,
                     "user_id": typing.user_id,
                     "name": typing.name
+                }),
+            },
+        });
+    }
+
+    fn handle_message_seen(&mut self, payload: Value) {
+        let message_seen: Result<MessageSeenPayload, _> =
+        serde_json::from_value(payload);
+
+        if let Err(error) = message_seen {
+            log::error!("Invalid payload structure: {:?}", error);
+            return;
+        }
+
+        let message_seen = message_seen.unwrap();
+
+        let user_id = self.user_id.clone();
+        let message_seen_clone = message_seen.clone();
+        actix::spawn(async move {
+            add_message_seen(message_seen_clone, &user_id).await;
+        });
+
+        self.lobby_addr.do_send(ClientActorMessage {
+            user_id: self.user_id.clone(),
+            room_id: message_seen.conversation_id.clone(),
+            msg: WsEnvelope {
+                msg_type: WsEnvelopeType::message_seen,
+                payload:  serde_json::json!({
+                    "conversation_id": message_seen.conversation_id,
+                    "user_id": self.user_id,
+                    "text_ids": message_seen.text_ids
                 }),
             },
         });
@@ -265,7 +308,7 @@ impl WsConn {
         let outgoing = self.build_outgoing_signal(&payload);
 
         let message = WsEnvelope {
-            msg_type: "call_signal".to_string(),
+            msg_type: WsEnvelopeType::call_signal,
             payload: outgoing,
         };
 
@@ -411,6 +454,32 @@ impl Handler<WsMessage> for WsConn {
     }
 }
 
+async fn add_message_seen(message_seen: MessageSeenPayload, user_id: &str) {
+    let db = MongoDB.connect();
+
+    let now = Utc::now().timestamp_millis();
+    let mut messages_to_read = Vec::new();
+
+    for text_id in message_seen.text_ids.clone() {   
+        let message_read = Conversation::MessageRead {
+            message_id: text_id,
+            user_id: user_id.to_string(),
+            read_at: now.clone(),
+        };
+
+        messages_to_read.push(message_read);
+    }
+    
+    let collection = db.collection::<Conversation::MessageRead>("message_read");
+
+    let result = collection.insert_many(messages_to_read).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return;
+    }
+}
+
 async fn save_message_in_database(message: SocketOutgoingTextModel) {
     /* DATABASE ACID SESSION INIT */
     let (db, mut session) = MongoDB.connect_acid().await;
@@ -419,6 +488,7 @@ async fn save_message_in_database(message: SocketOutgoingTextModel) {
         return;
     }
 
+    // Update last message
     let collection = db.collection::<Conversation::ConversationCore>("conversation_core");
     let result = collection.update_one(
         doc!{"uuid": message.conversation_id.clone()},
