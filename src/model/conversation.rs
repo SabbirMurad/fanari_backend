@@ -17,6 +17,15 @@ pub struct ConversationFavorite {
     pub created_at: i64,
 }
 
+//conversation_block
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConversationBlock {
+    pub uuid: String,
+    pub blocker_id: String,
+    pub blocked_id: String,
+    pub blocked_at: i64,
+}
+
 //conversation_muted
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConversationMuted {

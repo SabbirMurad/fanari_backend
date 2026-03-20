@@ -34,5 +34,15 @@ pub fn router(cfg: &mut web::ServiceConfig) {
           "/mute",
           web::patch().to(Handler::Conversation::Mute::task)
         )
+        //Delete Conversation
+        .route(
+          "/delete/{uuid}",
+          web::delete().to(Handler::Conversation::Delete::task)
+        )
+        //Block Conversation
+        .route(
+          "/block",
+          web::post().to(Handler::Conversation::Block::task)
+        )
     );
 }

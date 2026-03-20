@@ -1,4 +1,5 @@
 use futures::StreamExt;
+use mongodb::Database;
 use serde_json::{json, Value};
 use mongodb::bson::doc;
 use crate::BuiltIns::mongo::MongoDB;
@@ -129,10 +130,15 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
             }
         };
 
+        let common_metadata = json!({
+            "is_favorite": is_favorite,
+            "is_muted": is_muted
+        });
+
         // Fetch last message content
         let last_text = match conversation_core.last_message_id.clone() {
             Some(last_msg_id) => {
-                let result = get_last_text(&last_msg_id).await;
+                let result = get_last_text(&db, &last_msg_id).await;
                 match result {
                     Ok(text) => Some(text),
                     Err(error) => {
@@ -142,11 +148,6 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
             },
             None => None
         };
-
-        let common_metadata = json!({
-            "is_favorite": is_favorite,
-            "is_muted": is_muted
-        });
 
         // Count unread messages (messages from others that user hasn't read)
         let msg_collection = db.collection::<MessageUuidQuery>("message_core");
@@ -270,86 +271,23 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
 
                 let conversation_participant = option.unwrap();
 
-                let collection = db.collection::<Account::AccountProfile>("account_profile");
-
-                let result = collection.find_one(doc!{
-                    "uuid": &conversation_participant.user_id
-                }).await;
-
-                if let Err(error) = result {
-                    log::error!("{:?}", error);
-                    return Ok(Response::internal_server_error(
-                        &error.to_string()
-                    ));
-                }
-
-                let option = result.unwrap();
-                if let None = option {
-                    return Ok(Response::not_found("Account profile not found"));
-                }
-
-                let account_profile = option.unwrap();
-
-                let image = match account_profile.profile_picture {
-                    Some(image) => {
-                        let collection = db.collection::<ImageStruct>("image");
-
-                        let result = collection.find_one(doc!{
-                            "uuid": image
-                        }).await;
-
-                        if let Err(error) = result {
-                            log::error!("{:?}", error);
-                            return Ok(Response::internal_server_error(
-                                &error.to_string()
-                            ));
-                        }
-
-                        let option = result.unwrap();
-                        if let None = option {
-                            return Ok(Response::not_found("Image not found"));
-                        }
-
-                        let image = option.unwrap();
-
-                        Some(image)
-                    },
-                    None => None
+                let single_metadata = match get_single_metadata(
+                    &db,
+                    &user_id,
+                    &conversation_participant.user_id
+                ).await {
+                    Ok(metadata) => metadata,
+                    Err(error) => {
+                        return Ok(error);
+                    }
                 };
-
-                // Getting account status
-                let collection = db.collection::<Account::AccountStatus>("account_status");
-                let result = collection.find_one(
-                    doc!{"uuid": &conversation_participant.user_id}
-                ).await;
-
-                if let Err(error) = result {
-                    log::error!("{:?}", error);
-                    return Ok(Response::internal_server_error(
-                        &error.to_string())
-                    );
-                }
-
-                let option = result.unwrap();
-                if let None = option {
-                    return Ok(Response::not_found("Account status not found"));
-                }
-
-                let account_status = option.unwrap();
 
                 response.push(json!({
                     "core": conversation_core,
                     "common_metadata": common_metadata,
                     "last_text": last_text,
                     "unread_count": unread_count,
-                    "single_metadata": json!({
-                        "user_id": account_profile.uuid,
-                        "first_name": account_profile.first_name,
-                        "last_name": account_profile.last_name,
-                        "image": image,
-                        "online": account_status.online,
-                        "last_seen": account_status.last_seen
-                    })
+                    "single_metadata": single_metadata,
                 }));
             }
         }
@@ -362,9 +300,119 @@ pub async fn task(req: HttpRequest, req_query: web::Query<ReqQuery>) -> Result<H
     )
 }
 
-async fn get_last_text(last_msg_id: &str) -> Result<Value, HttpResponse> {
-    let db = MongoDB.connect();
+async fn get_single_metadata(db: &Database, my_id: &str, user_id: &str) -> Result<Value, HttpResponse> {
+    let collection = db.collection::<Account::AccountProfile>("account_profile");
 
+    let result = collection.find_one(doc!{
+        // "uuid": &conversation_participant.user_id
+        "uuid": user_id
+    }).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found("Account profile not found"));
+    }
+
+    let account_profile = option.unwrap();
+
+    let image = match account_profile.profile_picture {
+        Some(image) => {
+            let collection = db.collection::<ImageStruct>("image");
+            let result = collection.find_one(doc!{
+                "uuid": image
+            }).await;
+
+            if let Err(error) = result {
+                log::error!("{:?}", error);
+                return Err(Response::internal_server_error(
+                    &error.to_string()
+                ));
+            }
+
+            let option = result.unwrap();
+            if let None = option {
+                return Err(Response::not_found("Image not found"));
+            }
+
+            let image = option.unwrap();
+            Some(image)
+        },
+        None => None
+    };
+
+    // Getting account status
+    let collection = db.collection::<Account::AccountStatus>("account_status");
+    let result = collection.find_one(
+        doc!{"uuid": user_id}
+    ).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(
+            &error.to_string())
+        );
+    }
+
+    let option = result.unwrap();
+    if let None = option {
+        return Err(Response::not_found("Account status not found"));
+    }
+
+    let account_status = option.unwrap();
+
+    // Check if user is blocked by me
+    let collection = db.collection::<Conversation::ConversationBlock>("conversation_block");
+    let result = collection.count_documents(doc!{
+        "blocker_id": my_id,
+        "blocked_id": user_id
+    }).await;
+
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let is_blocked = result.unwrap() > 0;
+
+    // Check if I am blocked by user
+    let result = collection.count_documents(doc!{
+        "blocker_id": user_id,
+        "blocked_id": my_id
+    }).await;
+    
+    if let Err(error) = result {
+        log::error!("{:?}", error);
+        return Err(Response::internal_server_error(
+            &error.to_string()
+        ));
+    }
+
+    let am_blocked = result.unwrap() > 0;
+
+    Ok(
+        json!({
+            "user_id": account_profile.uuid,
+            "first_name": account_profile.first_name,
+            "last_name": account_profile.last_name,
+            "image": image,
+            "online": account_status.online,
+            "last_seen": account_status.last_seen,
+            "is_blocked": is_blocked,
+            "am_blocked": am_blocked
+        })
+    )
+}
+
+async fn get_last_text(db: &Database, last_msg_id: &str) -> Result<Value, HttpResponse> {
     let collection = db.collection::<Conversation::MessageContent>("message_content");
 
     let result = collection.find_one(doc!{

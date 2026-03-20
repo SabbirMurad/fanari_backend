@@ -16,5 +16,8 @@ pub use mute as Mute;
 pub mod delete;
 pub use delete as Delete;
 
+pub mod block;
+pub use block as Block;
+
 pub mod text_list;
 pub use text_list as TextList;
