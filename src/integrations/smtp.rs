@@ -188,6 +188,7 @@ pub fn send_email(message: Message) -> Result<(),()>{
 
     let mailer = SmtpTransport::relay("smtp.gmail.com")
         .unwrap()
+        .port(587)
         .credentials(credential)
         .build();
 

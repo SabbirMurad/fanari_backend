@@ -44,8 +44,7 @@ pub async fn task(
     if let Some(existing) = option {
         // Already blocked — remove it
         let result = block_collection.delete_one(doc!{
-            "blocker_id": &user_id,
-            "blocked_id": &req_body.user_id,
+            "uuid": &existing.uuid,
         }).await;
 
         if let Err(error) = result {

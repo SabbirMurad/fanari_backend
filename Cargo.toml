@@ -70,6 +70,9 @@ image = "0.24.6"
 # Watch dev code changes
 listenfd = "0.5"
 
+resend = "0.1.4"
+resend-rs = "0.21.1"
+
 [dependencies.jsonwebtoken]
 version = "8"
 default-features = false
