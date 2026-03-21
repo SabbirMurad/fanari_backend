@@ -9,6 +9,10 @@ pub fn router(cfg: &mut web::ServiceConfig) {
           "/single",
           web::post().to(Handler::Conversation::CreateSingle::task)
         )
+        .route(
+          "/single/{conversation_id}",
+          web::get().to(Handler::Conversation::GetSingle::task)
+        )
         //Create Group Conversation
         .route(
           "/group",

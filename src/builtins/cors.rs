@@ -29,6 +29,7 @@ pub fn get_policy() -> Cors {
             .allowed_origin("https://www.sabbirhassan.com:444")
             .allow_any_header()
             .allow_any_method()
+            .supports_credentials()
             .max_age(3600)
     }
 }

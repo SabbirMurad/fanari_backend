@@ -1,10 +1,14 @@
 use chrono::Utc;
+use futures::StreamExt;
 use uuid::Uuid;
 use serde_json::json;
 use mongodb::bson::doc;
 use crate::BuiltIns::mongo::MongoDB;
+use crate::handler::web_socket::message::AddToRoom;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
+use crate::Handler::WebSocket::lobby::Lobby;
+use actix::Addr;
 use actix_web::{web, Error, HttpResponse, HttpRequest};
 use crate::Middleware::Auth::{require_access, AccessRequirement};
 
@@ -15,7 +19,8 @@ pub struct ReqBody { other_user: String}
 
 pub async fn task(
     req: HttpRequest,
-    req_body: web::Json<ReqBody>
+    req_body: web::Json<ReqBody>,
+    srv: web::Data<Addr<Lobby>>
 ) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
@@ -29,6 +34,14 @@ pub async fn task(
     if let Err(error) = session.start_transaction().await {
         log::error!("{:?}", error);
         return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    //Check if conversation between users exist
+    if let Some(_) = single_conversation_exists(&db, &user_id, &req_body.other_user).await {
+        session.abort_transaction().await.ok().unwrap();
+        return Ok(Response::conflict(
+            "conversation already exists between users"
+        ));
     }
 
     //Creating Conversation
@@ -160,6 +173,16 @@ pub async fn task(
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
+/* Notify both users to join the new room */
+srv.do_send(AddToRoom {
+    user_id: user_id.clone(),
+    conversation_id: conversation_id.clone(),
+});
+srv.do_send(AddToRoom {
+    user_id: req_body.other_user.clone(),
+    conversation_id: conversation_id.clone(),
+});
+
     Ok(
         HttpResponse::Ok()
         .content_type("application/json")
@@ -171,8 +194,65 @@ pub async fn task(
                 "last_name": account_profile.last_name,
                 "image": image,
                 "online": account_status.online,
-                "last_seen": account_status.last_seen
+                "last_seen": account_status.last_seen,
+                "is_blocked": false,
+                "am_blocked": false
+            }),
+            "common_metadata": json!({
+                "is_favorite": false,
+                "is_muted": false
             })
         }))
     )
+}
+
+pub async fn single_conversation_exists(
+    db: &mongodb::Database,
+    user_a: &str,
+    user_b: &str,
+) -> Option<String> {
+    let collection = db.collection::<Conversation::ConversationParticipant>("conversation_participant");
+
+    // Find all Single conversation_ids that user_a is part of
+    let pipeline = vec![
+        // Match conversations where user_a is a participant
+        doc! { "$match": { "user_id": user_a } },
+
+        // Lookup to find user_b in the same conversation
+        doc! { "$lookup": {
+            "from": "conversation_participant",
+            "localField": "conversation_id",
+            "foreignField": "conversation_id",
+            "as": "other_participants"
+        }},
+
+        // Filter: other_participants must contain user_b
+        doc! { "$match": {
+            "other_participants.user_id": user_b
+        }},
+
+        // Lookup conversation_core to check type = Single
+        doc! { "$lookup": {
+            "from": "conversation_core",
+            "localField": "conversation_id",
+            "foreignField": "uuid",
+            "as": "core"
+        }},
+
+        // Filter: must be Single type
+        doc! { "$match": {
+            "core.type": "Single"
+        }},
+
+        doc! { "$limit": 1 },
+    ];
+
+    let mut cursor = collection.aggregate(pipeline).await.ok()?;
+
+    if let Some(Ok(doc)) = cursor.next().await {
+        let conversation_id = doc.get_str("conversation_id").ok()?.to_string();
+        return Some(conversation_id);
+    }
+
+    None
 }

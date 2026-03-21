@@ -35,22 +35,6 @@ pub async fn task(
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
-    //Check if other user exist
-    // let collection = db.collection::<Account::AccountCore>("account_core");
-    // let result = collection.find_one(doc!{"uuid": &req_body.other_user}).await;
-
-    // if let Err(error) = result {
-    //     log::error!("{:?}", error);
-    //     session.abort_transaction().await.ok().unwrap();
-    //     return Ok(Response::internal_server_error(&error.to_string()));
-    // }
-
-    // let option = result.unwrap();
-    // if let None = option {
-    //     session.abort_transaction().await.ok().unwrap();
-    //     return Ok(Response::not_found("user not found"));
-    // }
-
     //Creating Conversation
     let conversation_id = Uuid::new_v4().to_string();
     let now = Utc::now().timestamp_millis();
@@ -148,6 +132,10 @@ pub async fn task(
             "core": serde_json::to_value(&conversation).unwrap(),
             "group_metadata": serde_json::to_value(&conversation_details)
             .unwrap(),
+            "common_metadata": json!({
+                "is_favorite": false,
+                "is_muted": false
+            }),
         }))
     )
 }

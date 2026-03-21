@@ -9,11 +9,33 @@ use super::message::{
     WsMessage,
     ClientActorMessage,
     DirectMessage,
-    RoomSignalMessage
+    RoomSignalMessage,
+    AddToRoom
 };
 
-
 pub type Socket = Recipient<WsMessage>;
+
+impl Handler<AddToRoom> for Lobby {
+    type Result = ();
+
+    fn handle(&mut self, msg: AddToRoom, _ctx: &mut Self::Context) {
+        // Add user to the new room
+        self.rooms
+            .entry(msg.conversation_id.clone())
+            .or_insert_with(HashSet::new)
+            .insert(msg.user_id.clone());
+
+        // Notify the user's Flutter client about the new conversation
+        let envelope = WsEnvelope {
+            msg_type: WsEnvelopeType::new_conversation,
+            payload: serde_json::json!({
+                "conversation_id": msg.conversation_id,
+            }),
+        };
+
+        self.send_message(&envelope, &msg.user_id);
+    }
+}
 
 #[derive(Clone)]
 pub struct Lobby {
