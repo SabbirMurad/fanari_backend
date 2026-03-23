@@ -173,15 +173,17 @@ pub async fn task(
         return Ok(Response::internal_server_error(&error.to_string()));
     }
 
-/* Notify both users to join the new room */
-srv.do_send(AddToRoom {
-    user_id: user_id.clone(),
-    conversation_id: conversation_id.clone(),
-});
-srv.do_send(AddToRoom {
-    user_id: req_body.other_user.clone(),
-    conversation_id: conversation_id.clone(),
-});
+    /* Notify both users to join the new room */
+    srv.do_send(AddToRoom {
+        user_id: user_id.clone(),
+        conversation_id: conversation_id.clone(),
+        conversation_type: Conversation::ConversationType::Single
+    });
+    srv.do_send(AddToRoom {
+        user_id: req_body.other_user.clone(),
+        conversation_id: conversation_id.clone(),
+        conversation_type: Conversation::ConversationType::Single
+    });
 
     Ok(
         HttpResponse::Ok()

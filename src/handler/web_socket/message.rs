@@ -2,6 +2,8 @@ use actix::prelude::{Message, Recipient};
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
 
+use crate::model::conversation::ConversationType;
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum WsEnvelopeType {
     text,
@@ -77,4 +79,5 @@ pub struct RoomSignalMessage {
 pub struct AddToRoom {
     pub user_id: String,
     pub conversation_id: String,
+    pub conversation_type: ConversationType,
 }

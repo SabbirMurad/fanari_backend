@@ -30,6 +30,7 @@ impl Handler<AddToRoom> for Lobby {
             msg_type: WsEnvelopeType::new_conversation,
             payload: serde_json::json!({
                 "conversation_id": msg.conversation_id,
+                "type": msg.conversation_type
             }),
         };
 

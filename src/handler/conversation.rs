@@ -24,3 +24,6 @@ pub use text_list as TextList;
 
 pub mod get_single;
 pub use get_single as GetSingle;
+
+pub mod get_group;
+pub use get_group as GetGroup;

@@ -5,6 +5,9 @@ use mongodb::bson::doc;
 use crate::BuiltIns::mongo::MongoDB;
 use crate::utils::response::Response;
 use serde::{ Serialize, Deserialize };
+use crate::Handler::WebSocket::lobby::Lobby;
+use actix::Addr;
+use crate::handler::web_socket::message::AddToRoom;
 use actix_web::{web, Error, HttpResponse, HttpRequest};
 use crate::Middleware::Auth::{require_access, AccessRequirement};
 
@@ -19,7 +22,8 @@ pub struct ReqBody {
 
 pub async fn task(
     req: HttpRequest,
-    req_body: web::Json<ReqBody>
+    req_body: web::Json<ReqBody>,
+    srv: web::Data<Addr<Lobby>>
 ) -> Result<HttpResponse, Error> {
     let user = require_access(
         &req,
@@ -123,6 +127,15 @@ pub async fn task(
     if let Err(error) = session.commit_transaction().await {
         log::error!("{:?}", error);
         return Ok(Response::internal_server_error(&error.to_string()));
+    }
+
+    //Creating Conversation members
+    for member in &req_body.members {
+        srv.do_send(AddToRoom {
+            user_id: member.clone(),
+            conversation_id: conversation_id.clone(),
+            conversation_type: Conversation::ConversationType::Group
+        });
     }
 
     Ok(
